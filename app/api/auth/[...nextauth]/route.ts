@@ -1,9 +1,9 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
-import { db } from '../../../../src/config/firebase';
+import { db } from '../../../config/firebase';
 import { doc, getDoc, setDoc, collection, Firestore } from 'firebase/firestore';
 import type { Profile } from 'next-auth';
-import { UserRole } from '@/src/types/roles';
+import { UserRole } from '../../../types/roles';
 
 interface UserData {
   email: string;

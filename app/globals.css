@@ -7,63 +7,21 @@
   input[type="number"],
   input[type="date"],
   select {
-    @apply mt-1 block w-full rounded-md border-[#fedac2] shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01];
+    @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500;
   }
 
   button {
-    @apply focus:outline-none focus:ring-2 focus:ring-[#fc5d01] focus:ring-offset-2;
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
   }
 }
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 245, 239;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
-}
-
-/* Custom scrollbar for webkit browsers */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #fff5ef;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #fc5d01;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #fd7f33;
-}
-
-/* Form element focus styles */
-input:focus, select:focus {
-  border-color: #fc5d01;
-  box-shadow: 0 0 0 1px #fc5d01;
-}
-
-/* Table styles */
-table {
-  @apply shadow-lg bg-white rounded-lg overflow-hidden;
-}
-
-th {
-  @apply bg-[#fff5ef] text-[#fc5d01] font-semibold;
-}
-
-tr:hover {
-  @apply bg-[#fff5ef] transition-colors duration-150;
-}
-
-/* Button hover transitions */
-button {
-  @apply transition-colors duration-150;
+  background: rgb(var(--background-end-rgb));
 }

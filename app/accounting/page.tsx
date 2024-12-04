@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Student } from '../../src/types/student';
-import { OperationFee } from '../../src/types/operation';
+import { Student } from '../types/student';
+import { OperationFee } from '../types/operation';
 import { collection, getDocs, addDoc, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../../src/config/firebase';
+import { db } from '../config/firebase';
 import * as XLSX from 'xlsx';
 
 export default function AccountingPage() {

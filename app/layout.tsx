@@ -1,33 +1,40 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import ClientProviders from './ClientProviders';
-import Navigation from '@/src/components/Navigation';
+import './globals.css'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import ClientProviders from './ClientProviders'
+import Navigation from './components/Navigation'
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'PTE Intensive Management',
-  description: 'Attendance management system for PTE trainers',
-};
+  description: 'Student management system for PTE Intensive courses',
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <html lang="en">
       <body className={inter.className}>
         <ClientProviders>
-          <div className="min-h-screen bg-gray-50">
-            <Navigation />
-            <main>
-              {children}
-            </main>
-          </div>
+          <Navigation/>
+          {/* <nav className="bg-[#fc5d01]">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <h1 className="text-white text-xl font-bold">PTE Intensive Management</h1>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </nav> */}
+          <main>{children}</main>
         </ClientProviders>
       </body>
     </html>
-  );
+  )
 }

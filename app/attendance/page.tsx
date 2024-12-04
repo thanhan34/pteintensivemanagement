@@ -2,10 +2,10 @@
 
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import { db } from '../../src/config/firebase';
+import { db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import AttendanceForm from '../../src/components/AttendanceForm';
-import AttendanceList from '../../src/components/AttendanceList';
+import AttendanceForm from '../components/AttendanceForm';
+import AttendanceList from '../components/AttendanceList';
 
 export default function AttendancePage() {
   const { data: session, status } = useSession();

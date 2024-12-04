@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { db } from '../../src/config/firebase';
+import { db } from '../config/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
-import StudentForm from '../../src/components/StudentForm';
-import StudentList from '../../src/components/StudentList';
-import { Student, StudentFormData } from '../../src/types/student';
+import StudentForm from '../components/StudentForm';
+import StudentList from '../components/StudentList';
+import { Student, StudentFormData } from '../types/student';
 
 export default function StudentInformation() {
   const { data: session, status } = useSession();

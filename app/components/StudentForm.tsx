@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Student, StudentFormData } from '../../src/types/student';
+import { Student, StudentFormData } from '../types/student';
 
 interface StudentFormProps {
   onSubmit: (formData: StudentFormData) => Promise<void>;
