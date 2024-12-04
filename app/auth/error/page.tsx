@@ -1,8 +1,43 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 export default function ErrorPage() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+
+  const getErrorMessage = (error: string | null) => {
+    switch (error) {
+      case 'Configuration':
+        return 'There is a problem with the server configuration.';
+      case 'AccessDenied':
+        return 'Access denied. You do not have permission to sign in.';
+      case 'Verification':
+        return 'The verification token has expired or has already been used.';
+      case 'OAuthSignin':
+        return 'Error in constructing an authorization URL.';
+      case 'OAuthCallback':
+        return 'Error in handling the response from an OAuth provider.';
+      case 'OAuthCreateAccount':
+        return 'Could not create OAuth provider user in the database.';
+      case 'EmailCreateAccount':
+        return 'Could not create email provider user in the database.';
+      case 'Callback':
+        return 'Error in the OAuth callback handler route.';
+      case 'OAuthAccountNotLinked':
+        return 'Email on the account is already linked but not with this OAuth account.';
+      case 'EmailSignin':
+        return 'Check your email address.';
+      case 'CredentialsSignin':
+        return 'Sign in failed. Check the details you provided are correct.';
+      case 'SessionRequired':
+        return 'Please sign in to access this page.';
+      default:
+        return 'An unknown error occurred.';
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -27,8 +62,14 @@ export default function ErrorPage() {
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-yellow-700">
-                  An error occurred during the authentication process. Please try these steps:
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Error Type: {error}
+                </h3>
+                <p className="mt-2 text-sm text-yellow-700">
+                  {getErrorMessage(error)}
+                </p>
+                <p className="mt-2 text-sm text-yellow-700">
+                  Please try these steps:
                 </p>
                 <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
                   <li>Sign out if already signed in</li>

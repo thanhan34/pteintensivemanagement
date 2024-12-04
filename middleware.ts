@@ -7,17 +7,17 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Skip middleware for public paths
+    // Skip middleware for public paths and auth-related paths
     if (
       path.startsWith('/_next') ||
-      path.startsWith('/api') ||
+      path.startsWith('/api/auth') ||
       path.startsWith('/auth') ||
       path === '/favicon.ico'
     ) {
       return NextResponse.next();
     }
 
-    // If no token, only redirect to signin if not already there
+    // If no token, redirect to signin
     if (!token && !path.startsWith('/auth/signin')) {
       return NextResponse.redirect(new URL('/auth/signin', req.url));
     }
@@ -76,16 +76,16 @@ export default withAuth(
   }
 );
 
-// Only run middleware on pages, not on API routes or static files
+// Configure matcher to exclude auth-related paths
 export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api/auth (NextAuth API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
   ]
 };

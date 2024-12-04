@@ -57,10 +57,21 @@ const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      authorization: {
+        params: {
+          prompt: "select_account",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
+      console.log('SignIn Callback - User:', user.email);
+      console.log('SignIn Callback - Account:', account?.provider);
+      console.log('SignIn Callback - Profile:', profile?.sub);
+
       if (!user.email || !profile?.sub) {
         console.error('Missing required user data:', { email: user.email, sub: profile?.sub });
         return false;
@@ -93,7 +104,7 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, account, user }) {
       try {
         if (account && user) {
-          // Initial sign in
+          console.log('JWT Callback - Creating new token');
           const userRef = doc(db, 'users', token.sub as string);
           const userDoc = await getDoc(userRef);
           
@@ -126,6 +137,19 @@ const authOptions: NextAuthOptions = {
         console.error('Error in session callback:', error);
         return session;
       }
+    },
+
+    async redirect({ url, baseUrl }) {
+      console.log('Redirect Callback - URL:', url);
+      console.log('Redirect Callback - Base URL:', baseUrl);
+      
+      // If the url is relative, prefix it with the base url
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      } else if (url.startsWith(baseUrl)) {
+        return url;
+      }
+      return baseUrl;
     }
   },
   pages: {
@@ -134,8 +158,9 @@ const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: true, // Enable debug mode to see detailed error messages
+  debug: true,
   secret: process.env.NEXTAUTH_SECRET,
 };
 

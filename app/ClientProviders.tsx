@@ -8,7 +8,10 @@ export default function ClientProviders({
   children: React.ReactNode;
 }) {
   return (
-    <SessionProvider>
+    <SessionProvider 
+      refetchInterval={5 * 60} // Refresh session every 5 minutes
+      refetchOnWindowFocus={true}
+    >
       {children}
     </SessionProvider>
   );
