@@ -62,6 +62,7 @@ const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (!user.email || !profile?.sub) {
+        console.error('Missing required user data:', { email: user.email, sub: profile?.sub });
         return false;
       }
 
@@ -78,7 +79,11 @@ const authOptions: NextAuthOptions = {
         };
 
         const userDoc = await ensureUserDocument(db, profile.sub, userData);
-        return !!userDoc;
+        if (!userDoc) {
+          console.error('Failed to create/update user document');
+          return false;
+        }
+        return true;
       } catch (error) {
         console.error('Error in signIn callback:', error);
         return false;
@@ -86,29 +91,41 @@ const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, account, user }) {
-      if (account && user) {
-        // Initial sign in
-        const userRef = doc(db, 'users', token.sub as string);
-        const userDoc = await getDoc(userRef);
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as UserData;
-          token.role = userData.role;
-          token.name = userData.name;
-          token.email = userData.email;
+      try {
+        if (account && user) {
+          // Initial sign in
+          const userRef = doc(db, 'users', token.sub as string);
+          const userDoc = await getDoc(userRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as UserData;
+            token.role = userData.role;
+            token.name = userData.name;
+            token.email = userData.email;
+          } else {
+            console.error('User document not found in jwt callback');
+          }
         }
+        return token;
+      } catch (error) {
+        console.error('Error in jwt callback:', error);
+        return token;
       }
-      return token;
     },
 
     async session({ session, token }) {
-      if (session?.user) {
-        session.user.id = token.sub as string;
-        session.user.role = token.role as UserRole;
-        session.user.name = token.name as string || 'Unknown User';
-        session.user.email = token.email as string;
+      try {
+        if (session?.user) {
+          session.user.id = token.sub as string;
+          session.user.role = token.role as UserRole;
+          session.user.name = token.name as string || 'Unknown User';
+          session.user.email = token.email as string;
+        }
+        return session;
+      } catch (error) {
+        console.error('Error in session callback:', error);
+        return session;
       }
-      return session;
     }
   },
   pages: {
@@ -118,7 +135,7 @@ const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: true, // Enable debug mode to see detailed error messages
   secret: process.env.NEXTAUTH_SECRET,
 };
 
