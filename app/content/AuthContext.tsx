@@ -2,9 +2,10 @@
 
 import { createContext, useContext, ReactNode } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
+import type { User } from 'next-auth';
 
 interface AuthContextType {
-  user: any;
+  user: User | null | undefined;
   login: () => void;
   logout: () => Promise<void>;
 }
@@ -12,7 +13,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   const login = () => {
     signIn('google');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { db } from '../config/firebase';
 import { collection, query, getDocs, doc, where, getDoc, updateDoc } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
@@ -26,24 +26,6 @@ export default function AttendanceList() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (mounted && session?.user?.id) {
-      fetchAttendanceRecords();
-    }
-  }, [session, mounted]);
-
-  // Filter records when date range changes
-  useEffect(() => {
-    const filtered = attendanceRecords.filter(record => {
-      const recordDate = new Date(record.date);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59); // Include the entire end date
-      return recordDate >= start && recordDate <= end;
-    });
-    setFilteredRecords(filtered);
-  }, [attendanceRecords, startDate, endDate]);
-
   const fetchTrainerNames = async (trainerIds: string[]) => {
     try {
       const uniqueTrainerIds = [...new Set(trainerIds)];
@@ -64,10 +46,11 @@ export default function AttendanceList() {
       setTrainerNames(trainersMap);
     } catch (err) {
       console.error('Error fetching trainer names:', err);
+      setError('Failed to fetch trainer names');
     }
   };
 
-  const fetchAttendanceRecords = async () => {
+  const fetchAttendanceRecords = useCallback(async () => {
     if (!session?.user?.id) return;
 
     try {
@@ -104,7 +87,25 @@ export default function AttendanceList() {
       setError(err instanceof Error ? err.message : 'Failed to load attendance records');
       setLoading(false);
     }
-  };
+  }, [session?.user?.id, isAdmin]);
+
+  useEffect(() => {
+    if (mounted && session?.user?.id) {
+      fetchAttendanceRecords();
+    }
+  }, [session, mounted, fetchAttendanceRecords]);
+
+  // Filter records when date range changes
+  useEffect(() => {
+    const filtered = attendanceRecords.filter(record => {
+      const recordDate = new Date(record.date);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59); // Include the entire end date
+      return recordDate >= start && recordDate <= end;
+    });
+    setFilteredRecords(filtered);
+  }, [attendanceRecords, startDate, endDate]);
 
   const handleStatusUpdate = async (recordId: string, newStatus: 'approved' | 'rejected') => {
     if (!session?.user?.id || !isAdmin) return;
@@ -121,7 +122,7 @@ export default function AttendanceList() {
       alert(`Attendance record ${newStatus} successfully`);
     } catch (err) {
       console.error('Error updating attendance status:', err);
-      alert('Failed to update attendance status');
+      setError('Failed to update attendance status');
     }
   };
 
@@ -163,6 +164,12 @@ export default function AttendanceList() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
       {/* Date Range Filter */}
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="flex flex-wrap gap-4 items-center">

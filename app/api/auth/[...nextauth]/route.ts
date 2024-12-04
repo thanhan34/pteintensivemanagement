@@ -1,8 +1,7 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import { db } from '../../../config/firebase';
-import { doc, getDoc, setDoc, collection, Firestore } from 'firebase/firestore';
-import type { Profile } from 'next-auth';
+import { doc, getDoc, setDoc, Firestore } from 'firebase/firestore';
 import { UserRole } from '../../../types/roles';
 
 interface UserData {

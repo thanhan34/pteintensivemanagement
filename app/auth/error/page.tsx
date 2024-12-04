@@ -1,20 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect } from 'react';
 
-export default function ErrorPage() {
+// Create a separate client component for the error content
+function ErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
-
-  useEffect(() => {
-    // Log error details for debugging
-    console.error('Auth error:', {
-      error,
-      timestamp: new Date().toISOString(),
-    });
-  }, [error]);
 
   const getErrorMessage = (error: string | null) => {
     switch (error) {
@@ -118,5 +111,20 @@ export default function ErrorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function ErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold">Loading...</h2>
+        </div>
+      </div>
+    }>
+      <ErrorContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { db } from '../config/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
@@ -8,16 +8,25 @@ import StudentForm from '../components/StudentForm';
 import StudentList from '../components/StudentList';
 import { Student, StudentFormData } from '../types/student';
 
+// interface StudentValidationData {
+//   name: string;
+//   targetScore: number;
+//   startDate: string;
+//   studyDuration: number;
+//   tuitionPaymentDates: string[];
+//   tuitionPaymentStatus: 'paid' | 'pending' | 'overdue';
+//   trainerName: string;
+//   tuitionFee: number;
+//   notes: string;
+// }
+
 export default function StudentInformation() {
   const { data: session, status } = useSession();
   const [students, setStudents] = useState<Student[]>([]);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [jsonInput, setJsonInput] = useState('');
-  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);  
 
   const isAdmin = session?.user?.role === 'admin';
   const isAssistant = session?.user?.role === 'administrative_assistant';
@@ -26,13 +35,7 @@ export default function StudentInformation() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (mounted && status === 'authenticated' && (isAdmin || isAssistant)) {
-      fetchStudents();
-    }
-  }, [status, session, mounted]);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const q = query(collection(db, 'students'), orderBy('name'));
       const querySnapshot = await getDocs(q);
@@ -47,7 +50,13 @@ export default function StudentInformation() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (mounted && status === 'authenticated' && (isAdmin || isAssistant)) {
+      fetchStudents();
+    }
+  }, [status, mounted, isAdmin, isAssistant, fetchStudents]);
 
   const handleAddStudent = async (formData: StudentFormData) => {
     try {
@@ -117,81 +126,45 @@ export default function StudentInformation() {
     setEditingStudent(null);
   };
 
-  const validateStudentData = (data: any): data is StudentFormData => {
-    const requiredFields = ['name', 'targetScore', 'startDate', 'studyDuration', 
-      'tuitionPaymentDates', 'tuitionPaymentStatus', 'trainerName', 'tuitionFee'];
+  // const validateStudentData = (data: unknown): data is StudentValidationData => {
+  //   if (!data || typeof data !== 'object') {
+  //     throw new Error('Invalid data format');
+  //   }
+
+  //   const studentData = data as Partial<StudentValidationData>;
+  //   const requiredFields = ['name', 'targetScore', 'startDate', 'studyDuration', 
+  //     'tuitionPaymentDates', 'tuitionPaymentStatus', 'trainerName', 'tuitionFee', 'notes'];
     
-    for (const field of requiredFields) {
-      if (!(field in data)) {
-        throw new Error(`Missing required field: ${field}`);
-      }
-    }
+  //   for (const field of requiredFields) {
+  //     if (!(field in studentData)) {
+  //       throw new Error(`Missing required field: ${field}`);
+  //     }
+  //   }
 
-    if (typeof data.name !== 'string' || data.name.trim() === '') {
-      throw new Error('Name must be a non-empty string');
-    }
-    if (typeof data.targetScore !== 'number' || data.targetScore < 10 || data.targetScore > 90) {
-      throw new Error('Target score must be a number between 10 and 90');
-    }
-    if (!Array.isArray(data.tuitionPaymentDates) || data.tuitionPaymentDates.length === 0) {
-      throw new Error('Tuition payment dates must be a non-empty array');
-    }
-    if (!['paid', 'pending', 'overdue'].includes(data.tuitionPaymentStatus)) {
-      throw new Error('Invalid tuition payment status');
-    }
-    if (typeof data.trainerName !== 'string' || data.trainerName.trim() === '') {
-      throw new Error('Trainer name must be a non-empty string');
-    }
-    if (typeof data.tuitionFee !== 'number' || data.tuitionFee < 0) {
-      throw new Error('Tuition fee must be a non-negative number');
-    }
+  //   if (typeof studentData.name !== 'string' || studentData.name.trim() === '') {
+  //     throw new Error('Name must be a non-empty string');
+  //   }
+  //   if (typeof studentData.targetScore !== 'number' || studentData.targetScore < 10 || studentData.targetScore > 90) {
+  //     throw new Error('Target score must be a number between 10 and 90');
+  //   }
+  //   if (!Array.isArray(studentData.tuitionPaymentDates) || studentData.tuitionPaymentDates.length === 0) {
+  //     throw new Error('Tuition payment dates must be a non-empty array');
+  //   }
+  //   if (!['paid', 'pending', 'overdue'].includes(studentData.tuitionPaymentStatus as string)) {
+  //     throw new Error('Invalid tuition payment status');
+  //   }
+  //   if (typeof studentData.trainerName !== 'string' || studentData.trainerName.trim() === '') {
+  //     throw new Error('Trainer name must be a non-empty string');
+  //   }
+  //   if (typeof studentData.tuitionFee !== 'number' || studentData.tuitionFee < 0) {
+  //     throw new Error('Tuition fee must be a non-negative number');
+  //   }
+  //   if (typeof studentData.notes !== 'string') {
+  //     throw new Error('Notes must be a string');
+  //   }
 
-    return true;
-  };
-
-  const handleAddMultipleStudents = async () => {
-    try {
-      setJsonError(null);
-      const studentsData = JSON.parse(jsonInput);
-      
-      if (!Array.isArray(studentsData)) {
-        throw new Error('Input must be an array of students');
-      }
-
-      const validatedStudents: StudentFormData[] = studentsData.map((student, index) => {
-        try {
-          if (!validateStudentData(student)) {
-            throw new Error(`Invalid student data at index ${index}`);
-          }
-          return student as StudentFormData;
-        } catch (err) {
-          throw new Error(`Error in student ${index + 1}: ${(err as Error).message}`);
-        }
-      });
-
-      const addedStudents = await Promise.all(
-        validatedStudents.map(async (studentData) => {
-          const docRef = await addDoc(collection(db, 'students'), {
-            ...studentData,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          });
-
-          return {
-            ...studentData,
-            id: docRef.id,
-          } as Student;
-        })
-      );
-
-      setStudents(prevStudents => [...prevStudents, ...addedStudents]);
-      setJsonInput('');
-      alert(`Successfully added ${addedStudents.length} students`);
-    } catch (err) {
-      console.error('Error adding students:', err);
-      setJsonError((err as Error).message);
-    }
-  };
+  //   return true;
+  // };
 
   if (!mounted) {
     return null;
@@ -233,45 +206,6 @@ export default function StudentInformation() {
               onSubmit={editingStudent ? handleUpdateStudent : handleAddStudent}
               initialData={editingStudent || undefined}
             />
-
-            {/* <div className="mt-8 p-4 bg-white rounded-lg shadow">
-              <h2 className="text-xl font-bold text-[#fc5d01] mb-4">Add Multiple Students (JSON Format)</h2>
-              <div className="mb-4">
-                <textarea
-                  value={jsonInput}
-                  onChange={(e) => {
-                    setJsonInput(e.target.value);
-                    setJsonError(null);
-                  }}
-                  placeholder={`[
-  {
-    "name": "Student Name",
-    "targetScore": 30,
-    "startDate": "2023-11-20",
-    "studyDuration": 3,
-    "tuitionPaymentDates": ["2023-11-20"],
-    "tuitionPaymentStatus": "pending",
-    "trainerName": "Phương Tuyết",
-    "tuitionFee": 6500000,
-    "notes": ""
-  }
-]`}
-                  rows={10}
-                  className="w-full p-2 border rounded-md border-[#fedac2] focus:border-[#fc5d01] focus:ring-[#fc5d01]"
-                />
-              </div>
-              {jsonError && (
-                <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {jsonError}
-                </div>
-              )}
-              <button
-                onClick={handleAddMultipleStudents}
-                className="w-full px-4 py-2 bg-[#fc5d01] text-white rounded-md hover:bg-[#fd7f33]"
-              >
-                Add Multiple Students
-              </button>
-            </div> */}
           </div>
 
           <div>

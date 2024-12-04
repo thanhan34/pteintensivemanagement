@@ -52,6 +52,7 @@ export default function AttendanceForm() {
       setDate('');
       setStartTime('');
       setEndTime('');
+      setError(null);
       
       if (e.target instanceof HTMLFormElement) {
         e.target.reset();
@@ -70,6 +71,12 @@ export default function AttendanceForm() {
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-6 bg-white rounded-lg shadow">
       <h2 className="text-2xl font-bold mb-6">Submit Attendance</h2>
       
+      {error && (
+        <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
       <div>
         <label htmlFor="date" className="block text-sm font-medium text-gray-700">
           Date
@@ -111,8 +118,6 @@ export default function AttendanceForm() {
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
         />
       </div>
-
-     
 
       <button
         type="submit"
