@@ -27,7 +27,7 @@
 ### Configure Security Rules
 1. Go to "Firestore Database" > "Rules" tab
 2. Copy and paste the rules from `firestore-rules.md`
-3. Click "Publish"
+3. Click "Publish "
 
 ## 2. Environment Setup
 
