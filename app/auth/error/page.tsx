@@ -1,64 +1,14 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-// Create a separate client component for the error content
-function ErrorContent() {
-  const searchParams = useSearchParams();
-  const error = searchParams.get('error');
-
-  const getErrorMessage = (error: string | null) => {
-    switch (error) {
-      case 'AccessDenied':
-        return {
-          title: 'Setting Up Your Account',
-          message: 'Your account is being set up. Please try these steps:',
-          steps: [
-            'Sign out completely',
-            'Clear your browser cache',
-            'Sign in again',
-            'Wait a few seconds for account creation'
-          ]
-        };
-      case 'Configuration':
-        return {
-          title: 'System Configuration Error',
-          message: 'There is a problem with the system configuration. Please contact support.',
-          steps: []
-        };
-      case 'Verification':
-        return {
-          title: 'Verification Required',
-          message: 'The verification link may have expired or has already been used.',
-          steps: [
-            'Try signing in again',
-            'Request a new verification link if needed'
-          ]
-        };
-      default:
-        return {
-          title: 'Authentication Error',
-          message: 'An error occurred during the sign-in process. Please try again.',
-          steps: [
-            'Sign out if already signed in',
-            'Clear your browser cache',
-            'Try signing in again',
-            'Contact support if the issue persists'
-          ]
-        };
-    }
-  };
-
-  const errorDetails = getErrorMessage(error);
-
+export default function ErrorPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {errorDetails.title}
+            Authentication Error
           </h2>
           <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
             <div className="flex">
@@ -78,15 +28,14 @@ function ErrorContent() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-yellow-700">
-                  {errorDetails.message}
+                  An error occurred during the authentication process. Please try these steps:
                 </p>
-                {errorDetails.steps.length > 0 && (
-                  <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
-                    {errorDetails.steps.map((step, index) => (
-                      <li key={index}>{step}</li>
-                    ))}
-                  </ul>
-                )}
+                <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
+                  <li>Sign out if already signed in</li>
+                  <li>Clear your browser cache</li>
+                  <li>Try signing in again</li>
+                  <li>Contact support if the issue persists</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -111,20 +60,5 @@ function ErrorContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-// Main page component with Suspense boundary
-export default function ErrorPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold">Loading...</h2>
-        </div>
-      </div>
-    }>
-      <ErrorContent />
-    </Suspense>
   );
 }
