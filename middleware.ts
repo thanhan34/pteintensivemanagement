@@ -39,25 +39,25 @@ export default withAuth(
       return NextResponse.next();
     }
 
-    // Trainer can only access attendance
+    // Trainer should only access attendance page
     if (role === 'trainer') {
       // If already on attendance page, allow
       if (path.startsWith('/attendance')) {
         return NextResponse.next();
       }
-      // If not on attendance page and not already being redirected, redirect
+      // If not on attendance page and not an auth path, redirect to attendance
       if (!path.startsWith('/auth')) {
         return NextResponse.redirect(new URL('/attendance', req.url));
       }
     }
 
-    // Administrative assistant can only access student information
+    // Administrative assistant should only access student information page
     if (role === 'administrative_assistant') {
       // If already on student information page, allow
       if (path.startsWith('/studentinformation')) {
         return NextResponse.next();
       }
-      // If not on student information page and not already being redirected, redirect
+      // If not on student information page and not an auth path, redirect to student information
       if (!path.startsWith('/auth')) {
         return NextResponse.redirect(new URL('/studentinformation', req.url));
       }

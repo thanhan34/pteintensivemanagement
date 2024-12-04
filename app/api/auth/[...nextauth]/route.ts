@@ -143,13 +143,16 @@ const authOptions: NextAuthOptions = {
       console.log('Redirect Callback - URL:', url);
       console.log('Redirect Callback - Base URL:', baseUrl);
       
-      // If the url is relative, prefix it with the base url
-      if (url.startsWith('/')) {
-        return `${baseUrl}${url}`;
-      } else if (url.startsWith(baseUrl)) {
+      // If the url starts with the base url or is a relative url, allow it
+      if (url.startsWith(baseUrl) || url.startsWith('/')) {
+        // If it's a relative URL, make it absolute
+        if (url.startsWith('/')) {
+          return `${baseUrl}${url}`;
+        }
         return url;
       }
-      return baseUrl;
+      // Default to the attendance page
+      return `${baseUrl}/attendance`;
     }
   },
   pages: {
