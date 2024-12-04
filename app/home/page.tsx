@@ -28,7 +28,7 @@ export default function HomePage() {
                 </p>
                 <Link
                   href="/attendance"
-                  className="inline-block px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#fc5d01] hover:bg-indigo-700"
+                  className="inline-block px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#fc5d01] hover:bg-[#fedac2]"
                 >
                   Go to Attendance Management
                 </Link>
@@ -36,7 +36,7 @@ export default function HomePage() {
             ) : (
               <Link
                 href="/auth/signin"
-                className="inline-block px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                className="inline-block px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#fc5d01] hover:bg-[#fedac2]"
               >
                 Sign In to Get Started
               </Link>
