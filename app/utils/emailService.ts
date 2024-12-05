@@ -1,5 +1,5 @@
 import sgMail from '@sendgrid/mail';
-import { ResponseError } from '@sendgrid/mail';
+// import { ResponseError } from '@sendgrid/mail';
 
 // Initialize SendGrid with API key
 if (!process.env.SENDGRID_API_KEY) {
