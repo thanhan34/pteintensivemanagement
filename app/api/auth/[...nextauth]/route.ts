@@ -134,7 +134,7 @@ const authOptions: NextAuthOptions = {
       }
     },
 
-    async redirect({ url, baseUrl }) {
+    async redirect({ url }) {
       // Ensure we're using the correct base URL
       const localBaseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
       

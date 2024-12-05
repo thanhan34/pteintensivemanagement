@@ -8,8 +8,8 @@ import { AttendanceRecord, User } from '../types/roles';
 
 export default function AttendanceList() {
   const { data: session, status } = useSession();
-  const [attendanceRecords, setAttendanceRecords] = useState<(AttendanceRecord & { id: string })[]>([]);
-  const [filteredRecords, setFilteredRecords] = useState<(AttendanceRecord & { id: string })[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([]);
   const [trainerNames, setTrainerNames] = useState<{ [key: string]: string }>({});
   const [trainers, setTrainers] = useState<User[]>([]);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string>('');
@@ -19,7 +19,7 @@ export default function AttendanceList() {
 
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<(AttendanceRecord & { id: string }) | null>(null);
+  const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
 
   // Date range state
   const currentDate = new Date().toISOString().split('T')[0];
@@ -34,7 +34,7 @@ export default function AttendanceList() {
   }, []);
 
   // Fetch all trainers for admin filter
-  const setupTrainersListener = () => {
+  const setupTrainersListener = useCallback(() => {
     if (!isAdmin) return;
     
     try {
@@ -63,7 +63,7 @@ export default function AttendanceList() {
       setError('Failed to setup trainers listener');
       return undefined;
     }
-  };
+  }, [isAdmin]);
 
   const setupAttendanceListener = useCallback(() => {
     if (!session?.user?.id) return;
@@ -89,7 +89,7 @@ export default function AttendanceList() {
         const records = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as (AttendanceRecord & { id: string })[];
+        })) as AttendanceRecord[];
 
         records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -111,20 +111,15 @@ export default function AttendanceList() {
 
   useEffect(() => {
     if (mounted && session?.user?.id) {
-      let unsubscribeTrainers: (() => void) | undefined;
-      let unsubscribeAttendance: (() => void) | undefined;
-
-      if (isAdmin) {
-        unsubscribeTrainers = setupTrainersListener();
-      }
-      unsubscribeAttendance = setupAttendanceListener();
+      const unsubscribeTrainers = setupTrainersListener();
+      const unsubscribeAttendance = setupAttendanceListener();
 
       return () => {
         if (unsubscribeTrainers) unsubscribeTrainers();
         if (unsubscribeAttendance) unsubscribeAttendance();
       };
     }
-  }, [session, mounted, setupAttendanceListener, isAdmin]);
+  }, [session, mounted, setupAttendanceListener, setupTrainersListener]);
 
   // Filter records when date range changes
   useEffect(() => {
@@ -188,7 +183,7 @@ export default function AttendanceList() {
     }
   };
 
-  const handleEdit = async (record: AttendanceRecord & { id: string }) => {
+  const handleEdit = async (record: AttendanceRecord) => {
     if (!session?.user?.id) return;
 
     if (record.trainerId !== session.user.id && !isAdmin) {

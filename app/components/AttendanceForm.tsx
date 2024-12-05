@@ -45,7 +45,7 @@ export default function AttendanceForm() {
         throw new Error('End time must be after start time');
       }
 
-      const attendanceData = {
+      const attendanceData: Omit<AttendanceRecord, 'id'> = {
         trainerId: session.user.id,
         date,
         startTime,
@@ -53,11 +53,13 @@ export default function AttendanceForm() {
         totalHours,
         status: 'pending',
         notes: notes || '', // Set empty string as default if notes is empty
-        createdAt: serverTimestamp(),
       };
 
       // Add attendance record to Firestore
-      const docRef = await addDoc(collection(db, 'attendance'), attendanceData);
+      const docRef = await addDoc(collection(db, 'attendance'), {
+        ...attendanceData,
+        createdAt: serverTimestamp(),
+      });
 
       console.log('Attendance record created with ID:', docRef.id);
 

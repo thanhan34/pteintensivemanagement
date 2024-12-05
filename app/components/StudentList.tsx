@@ -12,16 +12,9 @@ interface StudentListProps {
 
 export default function StudentList({ students, onEdit, onDelete }: StudentListProps) {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'admin';
-
-  // Strict admin-only check
-  if (!session?.user?.role || session.user.role !== 'admin') {
-    console.log('Non-admin access attempted');
-    return null;
-  }
-
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const isAdmin = session?.user?.role === 'admin';
 
   // Memoized filtered and sorted students
   const filteredAndSortedStudents = useMemo(() => {
@@ -38,6 +31,12 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
         return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
       });
   }, [students, searchTerm, sortOrder, isAdmin]);
+
+  // Strict admin-only check after hooks
+  if (!session?.user?.role || session.user.role !== 'admin') {
+    console.log('Non-admin access attempted');
+    return null;
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
