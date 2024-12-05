@@ -11,21 +11,33 @@ interface StudentListProps {
 }
 
 export default function StudentList({ students, onEdit, onDelete }: StudentListProps) {
-  const [mounted, setMounted] = useState(false);
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'admin';
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Strict admin-only check
+  if (!session?.user?.role || session.user.role !== 'admin') {
+    console.log('Non-admin access attempted');
+    return null;
+  }
 
-  const sortedStudents = useMemo(() => {
-    return [...students].sort((a, b) => {
-      const dateA = new Date(a.startDate);
-      const dateB = new Date(b.startDate);
-      return dateA.getTime() - dateB.getTime(); // Sort in ascending order (oldest first)
-    });
-  }, [students]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Memoized filtered and sorted students
+  const filteredAndSortedStudents = useMemo(() => {
+    if (!isAdmin) return [];
+    
+    return [...students]
+      .filter(student => 
+        student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.trainerName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => {
+        const dateA = new Date(a.startDate).getTime();
+        const dateB = new Date(b.startDate).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+  }, [students, searchTerm, sortOrder, isAdmin]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -56,12 +68,31 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
     }).format(amount);
   };
 
-  if (!mounted) {
-    return null;
-  }
-
   return (
     <div className="mt-8">
+      <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex-1 w-full sm:w-auto">
+          <input
+            type="text"
+            placeholder="Search by name or trainer..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#fc5d01]"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Sort by date:</label>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#fc5d01]"
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-300">
           <thead className="bg-gray-100">
@@ -75,13 +106,11 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
               <th className="px-4 py-2 border">Payment Status</th>
               <th className="px-4 py-2 border">Payment Dates</th>
               <th className="px-4 py-2 border">Notes</th>
-              {isAdmin && (
-                <th className="px-4 py-2 border">Actions</th>
-              )}
+              <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {sortedStudents.map((student) => (
+            {filteredAndSortedStudents.map((student) => (
               <tr key={student.id}>
                 <td className="px-4 py-2 border">{student.name}</td>
                 <td className="px-4 py-2 border">{student.trainerName}</td>
@@ -106,22 +135,20 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
                     {student.notes}
                   </div>
                 </td>
-                {isAdmin && (
-                  <td className="px-4 py-2 border">
-                    <button
-                      onClick={() => onEdit(student)}
-                      className="text-[#fc5d01] hover:text-[#fd7f33] mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => onDelete(student.id)}
-                      className="text-[#fc5d01] hover:text-[#fd7f33]"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                )}
+                <td className="px-4 py-2 border">
+                  <button
+                    onClick={() => onEdit(student)}
+                    className="text-[#fc5d01] hover:text-[#fd7f33] mr-4"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => onDelete(student.id)}
+                    className="text-[#fc5d01] hover:text-[#fd7f33]"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

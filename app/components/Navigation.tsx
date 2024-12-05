@@ -14,7 +14,7 @@ export default function Navigation() {
         return (
           <>
             <Link
-              href="/studentinformation"
+              href="/students"
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
               Students
@@ -45,7 +45,7 @@ export default function Navigation() {
       case 'administrative_assistant':
         return (
           <Link
-            href="/studentinformation"
+            href="/students"
             className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
           >
             Students

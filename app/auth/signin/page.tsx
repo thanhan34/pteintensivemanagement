@@ -3,6 +3,14 @@
 import { signIn } from 'next-auth/react';
 
 export default function SignIn() {
+  const handleSignIn = () => {
+    // Use window.location.origin to get the current URL dynamically
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    signIn('google', {
+      callbackUrl: baseUrl
+    });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -16,7 +24,7 @@ export default function SignIn() {
         </div>
         <div className="mt-8 space-y-6">
           <button
-            onClick={() => signIn('google', { callbackUrl: '/attendance' })}
+            onClick={handleSignIn}
             className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm border-gray-300"
           >
             <span className="flex items-center">

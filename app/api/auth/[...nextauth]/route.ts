@@ -68,10 +68,6 @@ const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log('SignIn Callback - User:', user.email);
-      console.log('SignIn Callback - Account:', account?.provider);
-      console.log('SignIn Callback - Profile:', profile?.sub);
-
       if (!user.email || !profile?.sub) {
         console.error('Missing required user data:', { email: user.email, sub: profile?.sub });
         return false;
@@ -104,7 +100,6 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, account, user }) {
       try {
         if (account && user) {
-          console.log('JWT Callback - Creating new token');
           const userRef = doc(db, 'users', token.sub as string);
           const userDoc = await getDoc(userRef);
           
@@ -140,19 +135,21 @@ const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      console.log('Redirect Callback - URL:', url);
-      console.log('Redirect Callback - Base URL:', baseUrl);
+      // Ensure we're using the correct base URL
+      const localBaseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      
+      // If we're in a sign-in flow (url contains /auth/signin), redirect to home
+      if (url.includes('/auth/signin')) {
+        return localBaseUrl;
+      }
       
       // If the url starts with the base url or is a relative url, allow it
-      if (url.startsWith(baseUrl) || url.startsWith('/')) {
-        // If it's a relative URL, make it absolute
-        if (url.startsWith('/')) {
-          return `${baseUrl}${url}`;
-        }
+      if (url.startsWith(localBaseUrl) || url.startsWith('/')) {
         return url;
       }
-      // Default to the attendance page
-      return `${baseUrl}/attendance`;
+      
+      // Default to the base URL
+      return localBaseUrl;
     }
   },
   pages: {
@@ -163,7 +160,6 @@ const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: true,
   secret: process.env.NEXTAUTH_SECRET,
 };
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../config/firebase';
-import { collection, query, getDocs, doc, where, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, doc, where, getDoc, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { AttendanceRecord, User } from '../types/roles';
 
@@ -11,9 +11,15 @@ export default function AttendanceList() {
   const [attendanceRecords, setAttendanceRecords] = useState<(AttendanceRecord & { id: string })[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<(AttendanceRecord & { id: string })[]>([]);
   const [trainerNames, setTrainerNames] = useState<{ [key: string]: string }>({});
+  const [trainers, setTrainers] = useState<User[]>([]);
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<(AttendanceRecord & { id: string }) | null>(null);
 
   // Date range state
   const currentDate = new Date().toISOString().split('T')[0];
@@ -21,36 +27,45 @@ export default function AttendanceList() {
   const [endDate, setEndDate] = useState(currentDate);
 
   const isAdmin = session?.user?.role === 'admin';
+  const isTrainer = session?.user?.role === 'trainer';
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const fetchTrainerNames = async (trainerIds: string[]) => {
+  // Fetch all trainers for admin filter
+  const setupTrainersListener = () => {
+    if (!isAdmin) return;
+    
     try {
-      const uniqueTrainerIds = [...new Set(trainerIds)];
-      const trainersMap: { [key: string]: string } = {};
-
-      for (const trainerId of uniqueTrainerIds) {
-        const trainerRef = doc(db, 'users', trainerId);
-        const trainerDoc = await getDoc(trainerRef);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('role', '==', 'trainer'));
+      return onSnapshot(q, (querySnapshot) => {
+        const trainersData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as User[];
         
-        if (trainerDoc.exists()) {
-          const trainerData = trainerDoc.data() as User;
-          trainersMap[trainerId] = trainerData.name;
-        } else {
-          trainersMap[trainerId] = 'Unknown Trainer';
-        }
-      }
-
-      setTrainerNames(trainersMap);
+        setTrainers(trainersData);
+        
+        // Create trainer names map
+        const namesMap: { [key: string]: string } = {};
+        trainersData.forEach(trainer => {
+          namesMap[trainer.id] = trainer.name;
+        });
+        setTrainerNames(namesMap);
+      }, (err) => {
+        console.error('Error fetching trainers:', err);
+        setError('Failed to fetch trainers');
+      });
     } catch (err) {
-      console.error('Error fetching trainer names:', err);
-      setError('Failed to fetch trainer names');
+      console.error('Error setting up trainers listener:', err);
+      setError('Failed to setup trainers listener');
+      return undefined;
     }
   };
 
-  const fetchAttendanceRecords = useCallback(async () => {
+  const setupAttendanceListener = useCallback(() => {
     if (!session?.user?.id) return;
 
     try {
@@ -58,7 +73,11 @@ export default function AttendanceList() {
       let q;
 
       if (isAdmin) {
-        q = query(attendanceRef);
+        if (selectedTrainerId) {
+          q = query(attendanceRef, where('trainerId', '==', selectedTrainerId));
+        } else {
+          q = query(attendanceRef);
+        }
       } else {
         q = query(
           attendanceRef,
@@ -66,34 +85,46 @@ export default function AttendanceList() {
         );
       }
       
-      const querySnapshot = await getDocs(q);
-      const records = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as (AttendanceRecord & { id: string })[];
+      return onSnapshot(q, (querySnapshot) => {
+        const records = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as (AttendanceRecord & { id: string })[];
 
-      records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      if (isAdmin) {
-        await fetchTrainerNames(records.map(record => record.trainerId));
-      }
-
-      setAttendanceRecords(records);
-      setFilteredRecords(records);
-      setLoading(false);
-      setError(null);
+        setAttendanceRecords(records);
+        setLoading(false);
+        setError(null);
+      }, (err) => {
+        console.error('Error details:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load attendance records');
+        setLoading(false);
+      });
     } catch (err) {
       console.error('Error details:', err);
       setError(err instanceof Error ? err.message : 'Failed to load attendance records');
       setLoading(false);
+      return undefined;
     }
-  }, [session?.user?.id, isAdmin]);
+  }, [session?.user?.id, isAdmin, selectedTrainerId]);
 
   useEffect(() => {
     if (mounted && session?.user?.id) {
-      fetchAttendanceRecords();
+      let unsubscribeTrainers: (() => void) | undefined;
+      let unsubscribeAttendance: (() => void) | undefined;
+
+      if (isAdmin) {
+        unsubscribeTrainers = setupTrainersListener();
+      }
+      unsubscribeAttendance = setupAttendanceListener();
+
+      return () => {
+        if (unsubscribeTrainers) unsubscribeTrainers();
+        if (unsubscribeAttendance) unsubscribeAttendance();
+      };
     }
-  }, [session, mounted, fetchAttendanceRecords]);
+  }, [session, mounted, setupAttendanceListener, isAdmin]);
 
   // Filter records when date range changes
   useEffect(() => {
@@ -118,7 +149,6 @@ export default function AttendanceList() {
         approvedAt: new Date().toISOString()
       });
 
-      await fetchAttendanceRecords();
       alert(`Attendance record ${newStatus} successfully`);
     } catch (err) {
       console.error('Error updating attendance status:', err);
@@ -126,14 +156,113 @@ export default function AttendanceList() {
     }
   };
 
-  // Calculate total hours
-  const calculateTotalHours = () => {
-    return filteredRecords.reduce((total, record) => {
+  const handleDelete = async (recordId: string) => {
+    if (!session?.user?.id) return;
+
+    try {
+      const attendanceRef = doc(db, 'attendance', recordId);
+      const record = await getDoc(attendanceRef);
+      
+      if (!record.exists()) {
+        throw new Error('Record not found');
+      }
+
+      const recordData = record.data() as AttendanceRecord;
+      
+      // Only allow deletion if the record is pending and belongs to the trainer
+      if (recordData.trainerId !== session.user.id && !isAdmin) {
+        throw new Error('Unauthorized to delete this record');
+      }
+
+      if (recordData.status !== 'pending' && !isAdmin) {
+        throw new Error('Can only delete pending records');
+      }
+
+      if (confirm('Are you sure you want to delete this attendance record?')) {
+        await deleteDoc(attendanceRef);
+        alert('Attendance record deleted successfully');
+      }
+    } catch (err) {
+      console.error('Error deleting attendance record:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete attendance record');
+    }
+  };
+
+  const handleEdit = async (record: AttendanceRecord & { id: string }) => {
+    if (!session?.user?.id) return;
+
+    if (record.trainerId !== session.user.id && !isAdmin) {
+      setError('Unauthorized to edit this record');
+      return;
+    }
+
+    if (record.status !== 'pending' && !isAdmin) {
+      setError('Can only edit pending records');
+      return;
+    }
+
+    setEditingRecord(record);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingRecord || !session?.user?.id) return;
+
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      
+      const startTime = formData.get('startTime') as string;
+      const endTime = formData.get('endTime') as string;
+      const notes = formData.get('notes') as string;
+      const date = formData.get('date') as string;
+
+      // Calculate total hours
+      const start = new Date(`${date}T${startTime}`);
+      const end = new Date(`${date}T${endTime}`);
+      const totalHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+      if (totalHours <= 0) {
+        throw new Error('End time must be after start time');
+      }
+
+      const attendanceRef = doc(db, 'attendance', editingRecord.id);
+      await updateDoc(attendanceRef, {
+        date,
+        startTime,
+        endTime,
+        totalHours,
+        notes,
+        status: 'pending' // Reset to pending when edited
+      });
+
+      setIsEditModalOpen(false);
+      setEditingRecord(null);
+      alert('Attendance record updated successfully');
+    } catch (err) {
+      console.error('Error updating attendance record:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update attendance record');
+    }
+  };
+
+  // Calculate total hours for different statuses
+  const calculateHours = () => {
+    const approvedHours = filteredRecords.reduce((total, record) => {
       if (record.status === 'approved') {
         return total + record.totalHours;
       }
       return total;
     }, 0);
+
+    const pendingHours = filteredRecords.reduce((total, record) => {
+      if (record.status === 'pending') {
+        return total + record.totalHours;
+      }
+      return total;
+    }, 0);
+
+    return { approvedHours, pendingHours };
   };
 
   if (!mounted) return null;
@@ -162,6 +291,8 @@ export default function AttendanceList() {
     );
   }
 
+  const { approvedHours, pendingHours } = calculateHours();
+
   return (
     <div className="space-y-6">
       {error && (
@@ -170,9 +301,26 @@ export default function AttendanceList() {
         </div>
       )}
 
-      {/* Date Range Filter */}
+      {/* Filters Section */}
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="flex flex-wrap gap-4 items-center">
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <label>Trainer:</label>
+              <select
+                className="border p-2 rounded"
+                value={selectedTrainerId}
+                onChange={(e) => setSelectedTrainerId(e.target.value)}
+              >
+                <option value="">All Trainers</option>
+                {trainers.map((trainer) => (
+                  <option key={trainer.id} value={trainer.id}>
+                    {trainer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <label>From:</label>
             <input
@@ -196,10 +344,14 @@ export default function AttendanceList() {
 
       {/* Summary Section */}
       <div className="bg-white p-4 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-800">Total Approved Hours</h3>
-            <p className="text-2xl font-bold text-blue-600">{calculateTotalHours().toFixed(2)} hours</p>
+            <h3 className="text-lg font-semibold text-blue-800">Approved Hours</h3>
+            <p className="text-2xl font-bold text-blue-600">{approvedHours.toFixed(2)} hours</p>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-yellow-800">Pending Hours</h3>
+            <p className="text-2xl font-bold text-yellow-600">{pendingHours.toFixed(2)} hours</p>
           </div>
           <div className="bg-green-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-green-800">Records in Date Range</h3>
@@ -215,22 +367,20 @@ export default function AttendanceList() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                {isAdmin && (
+                {isAdmin && !selectedTrainerId && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trainer</th>
                 )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                {isAdmin && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={isAdmin ? (selectedTrainerId ? 7 : 8) : 7} className="px-6 py-4 text-center text-gray-500">
                     No attendance records found in selected date range
                   </td>
                 </tr>
@@ -238,7 +388,7 @@ export default function AttendanceList() {
                 filteredRecords.map((record) => (
                   <tr key={record.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.date}</td>
-                    {isAdmin && (
+                    {isAdmin && !selectedTrainerId && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {trainerNames[record.trainerId] || 'Loading...'}
                       </td>
@@ -258,10 +408,10 @@ export default function AttendanceList() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">{record.notes || '-'}</td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {record.status === 'pending' && (
-                          <div className="space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="space-x-2">
+                        {isAdmin && record.status === 'pending' && (
+                          <>
                             <button
                               onClick={() => handleStatusUpdate(record.id, 'approved')}
                               className="text-green-600 hover:text-green-900"
@@ -274,10 +424,26 @@ export default function AttendanceList() {
                             >
                               Reject
                             </button>
-                          </div>
+                          </>
                         )}
-                      </td>
-                    )}
+                        {((isTrainer && record.trainerId === session.user.id && record.status === 'pending') || isAdmin) && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(record)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(record.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -285,6 +451,76 @@ export default function AttendanceList() {
           </table>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {isEditModalOpen && editingRecord && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Edit Attendance Record</h3>
+              <form onSubmit={handleSaveEdit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date</label>
+                  <input
+                    type="date"
+                    name="date"
+                    defaultValue={editingRecord.date}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                  <input
+                    type="time"
+                    name="startTime"
+                    defaultValue={editingRecord.startTime}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">End Time</label>
+                  <input
+                    type="time"
+                    name="endTime"
+                    defaultValue={editingRecord.endTime}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Notes</label>
+                  <textarea
+                    name="notes"
+                    defaultValue={editingRecord.notes}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setEditingRecord(null);
+                    }}
+                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

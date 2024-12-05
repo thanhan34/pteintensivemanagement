@@ -7,7 +7,7 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Skip middleware for public paths and auth-related paths
+    // Always allow access to auth-related paths
     if (
       path.startsWith('/_next') ||
       path.startsWith('/api/auth') ||
@@ -17,18 +17,13 @@ export default withAuth(
       return NextResponse.next();
     }
 
-    // If no token, redirect to signin
-    if (!token && !path.startsWith('/auth/signin')) {
-      return NextResponse.redirect(new URL('/auth/signin', req.url));
+    // If no token, allow the request to proceed (NextAuth will handle the redirect)
+    if (!token) {
+      return NextResponse.next();
     }
 
     // Allow access to home page
     if (path === '/') {
-      return NextResponse.next();
-    }
-
-    // If we have a token but no role, allow the request (role will be set by the session callback)
-    if (!token?.role) {
       return NextResponse.next();
     }
 
@@ -39,44 +34,32 @@ export default withAuth(
       return NextResponse.next();
     }
 
-    // Trainer should only access attendance page
+    // Trainer can only access attendance
     if (role === 'trainer') {
-      // If already on attendance page, allow
       if (path.startsWith('/attendance')) {
         return NextResponse.next();
       }
-      // If not on attendance page and not an auth path, redirect to attendance
-      if (!path.startsWith('/auth')) {
-        return NextResponse.redirect(new URL('/attendance', req.url));
-      }
+      return NextResponse.redirect(new URL('/attendance', req.url));
     }
 
-    // Administrative assistant should only access student information page
+    // Administrative assistant can only access students page
     if (role === 'administrative_assistant') {
-      // If already on student information page, allow
-      if (path.startsWith('/studentinformation')) {
+      if (path.startsWith('/students')) {
         return NextResponse.next();
       }
-      // If not on student information page and not an auth path, redirect to student information
-      if (!path.startsWith('/auth')) {
-        return NextResponse.redirect(new URL('/studentinformation', req.url));
-      }
+      return NextResponse.redirect(new URL('/students', req.url));
     }
 
-    // For any other case, allow the request
-    return NextResponse.next();
+    // For any other case, redirect to home
+    return NextResponse.redirect(new URL('/', req.url));
   },
   {
     callbacks: {
-      authorized: ({ token }) => {
-        // Allow the middleware to handle the request
-        return true;
-      }
+      authorized: ({ token }) => true, // Let the middleware handle authorization
     },
   }
 );
 
-// Configure matcher to exclude auth-related paths
 export const config = {
   matcher: [
     /*
