@@ -1,4 +1,5 @@
 import sgMail from '@sendgrid/mail';
+import { ResponseError } from '@sendgrid/mail';
 
 // Initialize SendGrid with API key
 if (!process.env.SENDGRID_API_KEY) {
@@ -11,6 +12,16 @@ interface PaymentReminderData {
   startDate: string;
   tuitionFee: number;
   notes: string;
+}
+
+interface SendGridErrorResponse {
+  code: number;
+  message: string;
+  response?: {
+    headers: Record<string, string>;
+    body: unknown;
+    statusCode: number;
+  };
 }
 
 export const sendPaymentReminder = async (overdueStudents: PaymentReminderData[]) => {
@@ -76,15 +87,16 @@ export const sendPaymentReminder = async (overdueStudents: PaymentReminderData[]
     console.log('Payment reminder email sent successfully');
     
     return response;
-  } catch (error: any) {
+  } catch (error) {
+    const sendGridError = error as SendGridErrorResponse;
     console.error('Error sending payment reminder email:');
-    console.error('Error code:', error?.code);
-    console.error('Error message:', error?.message);
-    if (error?.response) {
+    console.error('Error code:', sendGridError.code);
+    console.error('Error message:', sendGridError.message);
+    if (sendGridError.response) {
       console.error('SendGrid API Error Response:');
-      console.error('Status code:', error.response.statusCode);
-      console.error('Body:', error.response.body);
-      console.error('Headers:', error.response.headers);
+      console.error('Status code:', sendGridError.response.statusCode);
+      console.error('Body:', sendGridError.response.body);
+      console.error('Headers:', sendGridError.response.headers);
     }
     throw error;
   }

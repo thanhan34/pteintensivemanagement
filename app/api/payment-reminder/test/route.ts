@@ -9,6 +9,16 @@ import { authOptions } from '@/app/config/auth';
 // Generate a secure token for cron job authentication
 const CRON_SECRET = process.env.CRON_SECRET || 'pte-intensive-cron-2024-secure';
 
+interface SendGridErrorResponse {
+  code: number;
+  message: string;
+  response?: {
+    headers: Record<string, string>;
+    body: unknown;
+    statusCode: number;
+  };
+}
+
 export async function GET(request: Request) {
   try {
     // Check if this is a cron job request
@@ -76,13 +86,14 @@ export async function GET(request: Request) {
             notes: s.notes
           }))
         });
-      } catch (emailError: any) {
+      } catch (error) {
+        const emailError = error as SendGridErrorResponse;
         console.error('Failed to send email:', emailError);
         return NextResponse.json({
           success: false,
           message: 'Found overdue payments but failed to send email notification',
-          error: emailError?.message || 'Unknown email error',
-          sendGridError: emailError?.response?.body || null,
+          error: emailError.message || 'Unknown email error',
+          sendGridError: emailError.response?.body || null,
           students: overdueStudents.map(s => s.name)
         }, { status: 500 });
       }
@@ -95,12 +106,13 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error('Error in test payment reminder:', error);
+    const serverError = error as Error;
+    console.error('Error in test payment reminder:', serverError);
     return NextResponse.json(
       {
         success: false,
         message: 'Failed to process test payment reminder',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: serverError.message || 'Unknown error'
       },
       { status: 500 }
     );
