@@ -14,6 +14,7 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
   const { data: session } = useSession();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [activeTab, setActiveTab] = useState<'one-on-one' | 'class' | '2345'>('class');
   const isAdmin = session?.user?.role === 'admin';
 
   // Memoized filtered and sorted students
@@ -22,15 +23,17 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
     
     return [...students]
       .filter(student => 
-        student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.trainerName.toLowerCase().includes(searchTerm.toLowerCase())
+        // Handle students without type field (legacy data) as 'class'
+        ((student.type || 'class') === activeTab) &&
+        (student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.trainerName.toLowerCase().includes(searchTerm.toLowerCase()))
       )
       .sort((a, b) => {
         const dateA = new Date(a.startDate).getTime();
         const dateB = new Date(b.startDate).getTime();
         return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
       });
-  }, [students, searchTerm, sortOrder, isAdmin]);
+  }, [students, searchTerm, sortOrder, isAdmin, activeTab]);
 
   // Strict admin-only check after hooks
   if (!session?.user?.role || session.user.role !== 'admin') {
@@ -69,6 +72,42 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
 
   return (
     <div className="mt-8">
+      {/* Tabs */}
+      <div className="mb-4 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('class')}
+            className={`${
+              activeTab === 'class'
+                ? 'border-[#fc5d01] text-[#fc5d01]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Class Students
+          </button>
+          <button
+            onClick={() => setActiveTab('2345')}
+            className={`${
+              activeTab === '2345'
+                ? 'border-[#fc5d01] text-[#fc5d01]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            2345 Students
+          </button>
+          <button
+            onClick={() => setActiveTab('one-on-one')}
+            className={`${
+              activeTab === 'one-on-one'
+                ? 'border-[#fc5d01] text-[#fc5d01]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            1-1 Students
+          </button>
+        </nav>
+      </div>
+
       <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex-1 w-full sm:w-auto">
           <input

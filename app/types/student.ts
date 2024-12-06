@@ -9,6 +9,7 @@ export interface Student {
   trainerName: string;
   tuitionFee: number;
   notes: string;
+  type: 'one-on-one' | 'class' | '2345';
 }
 
 export type StudentFormData = Omit<Student, 'id'>;

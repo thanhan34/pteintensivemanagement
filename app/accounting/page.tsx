@@ -22,8 +22,11 @@ interface OperationFeeExportData {
   'Trainer Name': string;
   'Amount': number;
   'Date': string;
+  'Type': string;
   'Notes': string;
 }
+
+type StudentType = 'one-on-one' | 'class' | '2345';
 
 export default function AccountingPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -32,6 +35,8 @@ export default function AccountingPage() {
   const [searchFeeTerm, setSearchFeeTerm] = useState('');
   const [minTargetScore, setMinTargetScore] = useState<number | ''>('');
   const [maxTargetScore, setMaxTargetScore] = useState<number | ''>('');
+  const [activeFeeTab, setActiveFeeTab] = useState<StudentType>('class');
+  // const [activeFeeTab, setActiveFeeTab] = useState<StudentType>('class');
   
   // Date range states
   const currentDate = new Date().toISOString().split('T')[0];
@@ -42,7 +47,8 @@ export default function AccountingPage() {
     trainerName: '',
     amount: 0,
     date: currentDate,
-    notes: ''
+    notes: '',
+    type: 'class'
   });
 
   // Edit mode states
@@ -51,7 +57,8 @@ export default function AccountingPage() {
     trainerName: '',
     amount: 0,
     date: currentDate,
-    notes: ''
+    notes: '',
+    type: 'class'
   });
 
   // Sorting states
@@ -100,13 +107,8 @@ export default function AccountingPage() {
 
   const handleAddFee = async () => {
     try {
-      // Only include the necessary fields, excluding id
-      const { trainerName, amount, date, notes } = newFee;
       const feeData = {
-        trainerName,
-        amount,
-        date,
-        notes,
+        ...newFee,
         createdAt: serverTimestamp()
       };
 
@@ -123,7 +125,8 @@ export default function AccountingPage() {
         trainerName: '',
         amount: 0,
         date: currentDate,
-        notes: ''
+        notes: '',
+        type: activeFeeTab
       });
     } catch (error) {
       console.error('Error adding operation fee:', error);
@@ -131,13 +134,14 @@ export default function AccountingPage() {
   };
 
   const handleEditFee = (fee: OperationFee) => {
-    if (!fee.id) return; // Type guard to ensure fee has an id
+    if (!fee.id) return;
     setEditingFee(fee.id);
     setEditForm({
       trainerName: fee.trainerName,
       amount: fee.amount,
       date: fee.date,
-      notes: fee.notes
+      notes: fee.notes,
+      type: fee.type || 'class'
     });
   };
 
@@ -186,7 +190,7 @@ export default function AccountingPage() {
       'Payment Status': student.tuitionPaymentStatus,
       'Notes': student.notes
     }));
-    exportToExcel(exportData, 'student_payments');
+    exportToExcel(exportData, `student_payments_${activeFeeTab}`);
   };
 
   const handleExportOperationFees = () => {
@@ -194,9 +198,10 @@ export default function AccountingPage() {
       'Trainer Name': fee.trainerName,
       'Amount': fee.amount,
       'Date': formatDate(fee.date),
+      'Type': fee.type || 'class',
       'Notes': fee.notes
     }));
-    exportToExcel(exportData, 'operation_fees');
+    exportToExcel(exportData, `operation_fees_${activeFeeTab}`);
   };
 
   // Date filtering function
@@ -207,11 +212,12 @@ export default function AccountingPage() {
     return checkDate >= start && checkDate <= end;
   };
 
-  // Filter students based on search term, date range, and target score
+  // Filter students based on search term, date range, target score, and type
   const filteredStudents = students
     .filter(student =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.notes.toLowerCase().includes(searchTerm.toLowerCase())
+      (student.type || 'class') === activeFeeTab && // Filter by type
+      (student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.notes.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .filter(student => 
       student.tuitionPaymentDates.some(date => isWithinDateRange(date))
@@ -229,11 +235,12 @@ export default function AccountingPage() {
         : dateB.getTime() - dateA.getTime();
     });
 
-  // Filter operation fees based on search term and date range
+  // Filter operation fees based on search term, date range, and type
   const filteredFees = operationFees
     .filter(fee =>
-      fee.trainerName.toLowerCase().includes(searchFeeTerm.toLowerCase()) ||
-      fee.notes.toLowerCase().includes(searchFeeTerm.toLowerCase())
+      (fee.type || 'class') === activeFeeTab && // Filter by type
+      (fee.trainerName.toLowerCase().includes(searchFeeTerm.toLowerCase()) ||
+      fee.notes.toLowerCase().includes(searchFeeTerm.toLowerCase()))
     )
     .filter(fee => isWithinDateRange(fee.date))
     .sort((a, b) => {
@@ -344,6 +351,43 @@ export default function AccountingPage() {
                 </button>
               </div>
             </div>
+
+            {/* Student Type Tabs */}
+            <div className="mb-4 border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <button
+                  onClick={() => setActiveFeeTab('class')}
+                  className={`${
+                    activeFeeTab === 'class'
+                      ? 'border-[#fc5d01] text-[#fc5d01]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Class Students
+                </button>
+                <button
+                  onClick={() => setActiveFeeTab('2345')}
+                  className={`${
+                    activeFeeTab === '2345'
+                      ? 'border-[#fc5d01] text-[#fc5d01]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  2345 Students
+                </button>
+                <button
+                  onClick={() => setActiveFeeTab('one-on-one')}
+                  className={`${
+                    activeFeeTab === 'one-on-one'
+                      ? 'border-[#fc5d01] text-[#fc5d01]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  1-1 Students
+                </button>
+              </nav>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white border border-gray-300">
                 <thead>
@@ -400,6 +444,52 @@ export default function AccountingPage() {
                 </button>
               </div>
             </div>
+
+            {/* Operation Fee Type Tabs */}
+            <div className="mb-4 border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <button
+                  onClick={() => {
+                    setActiveFeeTab('class');
+                    setNewFee(prev => ({ ...prev, type: 'class' }));
+                  }}
+                  className={`${
+                    activeFeeTab === 'class'
+                      ? 'border-[#fc5d01] text-[#fc5d01]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Class Fees
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveFeeTab('2345');
+                    setNewFee(prev => ({ ...prev, type: '2345' }));
+                  }}
+                  className={`${
+                    activeFeeTab === '2345'
+                      ? 'border-[#fc5d01] text-[#fc5d01]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  2345 Fees
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveFeeTab('one-on-one');
+                    setNewFee(prev => ({ ...prev, type: 'one-on-one' }));
+                  }}
+                  className={`${
+                    activeFeeTab === 'one-on-one'
+                      ? 'border-[#fc5d01] text-[#fc5d01]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  1-1 Fees
+                </button>
+              </nav>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <input
                 type="text"
@@ -421,10 +511,19 @@ export default function AccountingPage() {
                 value={newFee.date}
                 onChange={(e) => setNewFee({...newFee, date: e.target.value})}
               />
+              <select
+                className="border p-2 rounded"
+                value={newFee.type}
+                onChange={(e) => setNewFee({...newFee, type: e.target.value as StudentType})}
+              >
+                <option value="class">Class Fee</option>
+                <option value="2345">2345 Fee</option>
+                <option value="one-on-one">1-1 Fee</option>
+              </select>
               <input
                 type="text"
                 placeholder="Notes"
-                className="border p-2 rounded"
+                className="border p-2 rounded md:col-span-2"
                 value={newFee.notes}
                 onChange={(e) => setNewFee({...newFee, notes: e.target.value})}
               />
@@ -444,6 +543,7 @@ export default function AccountingPage() {
                     <th className="px-4 py-2 border">Trainer Name</th>
                     <th className="px-4 py-2 border">Amount</th>
                     <th className="px-4 py-2 border">Date</th>
+                    <th className="px-4 py-2 border">Type</th>
                     <th className="px-4 py-2 border">Notes</th>
                     <th className="px-4 py-2 border">Actions</th>
                   </tr>
@@ -480,6 +580,21 @@ export default function AccountingPage() {
                             onChange={(e) => setEditForm({...editForm, date: e.target.value})}
                           />
                         ) : formatDate(fee.date)}
+                      </td>
+                      <td className="px-4 py-2 border">
+                        {editingFee === fee.id ? (
+                          <select
+                            className="w-full p-1 border rounded"
+                            value={editForm.type}
+                            onChange={(e) => setEditForm({...editForm, type: e.target.value as StudentType})}
+                          >
+                            <option value="class">Class Fee</option>
+                            <option value="2345">2345 Fee</option>
+                            <option value="one-on-one">1-1 Fee</option>
+                          </select>
+                        ) : fee.type === 'class' ? 'Class Fee' :
+                           fee.type === '2345' ? '2345 Fee' :
+                           fee.type === 'one-on-one' ? '1-1 Fee' : 'Class Fee'}
                       </td>
                       <td className="px-4 py-2 border">
                         {editingFee === fee.id ? (

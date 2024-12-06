@@ -16,7 +16,8 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
     tuitionPaymentStatus: 'pending',
     trainerName: '',
     tuitionFee: 6500000,
-    notes: ''
+    notes: '',
+    type: 'class'
   });
 
   const [newPaymentDate, setNewPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -32,7 +33,8 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
         tuitionPaymentStatus: initialData.tuitionPaymentStatus,
         trainerName: initialData.trainerName,
         tuitionFee: initialData.tuitionFee,
-        notes: initialData.notes
+        notes: initialData.notes,
+        type: initialData.type || 'class'
       });
     }
   }, [initialData]);
@@ -61,7 +63,8 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
           tuitionPaymentStatus: 'pending',
           trainerName: '',
           tuitionFee: 6500000,
-          notes: ''
+          notes: '',
+          type: 'class'
         });
       }
     } catch (error) {
@@ -108,25 +111,39 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
       </div>
 
       <div>
-  <label className="block text-sm font-medium text-gray-700">Target Score</label>
-  <select
-    value={formData.targetScore}
-    onChange={(e) =>
-      setFormData({ ...formData, targetScore: Number(e.target.value) })
-    }
-    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
-    required
-  >
-    <option value="" disabled>Select Target Score</option>
-    <option value={30}>30</option>
-    <option value={36}>36</option>
-    <option value={42}>42</option>
-    <option value={50}>50</option>
-    <option value={58}>58</option>
-    <option value={65}>65</option>
-    <option value={79}>79</option>
-  </select>
-</div>
+        <label className="block text-sm font-medium text-gray-700">Student Type</label>
+        <select
+          value={formData.type}
+          onChange={(e) => setFormData({...formData, type: e.target.value as 'one-on-one' | 'class' | '2345'})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+          required
+        >
+          <option value="class">Class</option>
+          <option value="2345">2345</option>
+          <option value="one-on-one">1-1</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Target Score</label>
+        <select
+          value={formData.targetScore}
+          onChange={(e) =>
+            setFormData({ ...formData, targetScore: Number(e.target.value) })
+          }
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+          required
+        >
+          <option value="" disabled>Select Target Score</option>
+          <option value={30}>30</option>
+          <option value={36}>36</option>
+          <option value={42}>42</option>
+          <option value={50}>50</option>
+          <option value={58}>58</option>
+          <option value={65}>65</option>
+          <option value={79}>79</option>
+        </select>
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Start Date</label>
@@ -152,27 +169,27 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
       </div>
 
       <div>
-  <label className="block text-sm font-medium text-gray-700">Trainer Name</label>
-  <select
-    value={formData.trainerName}
-    onChange={(e) =>
-      setFormData({ ...formData, trainerName: e.target.value })
-    }
-    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
-    required
-  >
-    <option value="" disabled>Select Trainer</option>
-    <option value="Thanh An">Thanh An</option>
-    <option value="Hải Hà">Hải Hà</option>
-    <option value="Phương Tuyết">Phương Tuyết</option>
-    <option value="Bích Diệp">Bích Diệp</option>
-    <option value="Thanh Tâm">Thanh Tâm</option>
-    <option value="Thu Hương">Thu Hương</option>
-    <option value="Thanh Hương">Thanh Hương</option>
-    <option value="Bạch Yến">Bạch Yến</option>
-    <option value="Dung Nguyễn">Dung Nguyễn</option>
-  </select>
-</div>
+        <label className="block text-sm font-medium text-gray-700">Trainer Name</label>
+        <select
+          value={formData.trainerName}
+          onChange={(e) =>
+            setFormData({ ...formData, trainerName: e.target.value })
+          }
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+          required
+        >
+          <option value="" disabled>Select Trainer</option>
+          <option value="Thanh An">Thanh An</option>
+          <option value="Hải Hà">Hải Hà</option>
+          <option value="Phương Tuyết">Phương Tuyết</option>
+          <option value="Bích Diệp">Bích Diệp</option>
+          <option value="Thanh Tâm">Thanh Tâm</option>
+          <option value="Thu Hương">Thu Hương</option>
+          <option value="Thanh Hương">Thanh Hương</option>
+          <option value="Bạch Yến">Bạch Yến</option>
+          <option value="Dung Nguyễn">Dung Nguyễn</option>
+        </select>
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Tuition Fee (VND)</label>
