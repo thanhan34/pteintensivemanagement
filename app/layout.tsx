@@ -2,14 +2,8 @@ import './globals.css'
 import { Inter } from 'next/font/google'
 import ClientProviders from './ClientProviders'
 import Navigation from './components/Navigation'
-import { initializeCronJobs } from './utils/cronJobs'
 
 const inter = Inter({ subsets: ['latin'] })
-
-// Initialize cron jobs when server starts
-if (typeof window === 'undefined') {
-  initializeCronJobs();
-}
 
 export const metadata = {
   title: 'PTE Intensive Management',
@@ -25,7 +19,6 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} bg-[#fff5ef] min-h-screen`}>
         <ClientProviders>
-          
           <Navigation />
           <main className="container mx-auto px-4 py-8">
             {children}
