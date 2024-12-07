@@ -1,5 +1,8 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { Student, StudentFormData } from '../types/student';
+import { useSettings } from '../hooks/useSettings';
 
 interface StudentFormProps {
   onSubmit: (formData: StudentFormData) => Promise<void>;
@@ -7,6 +10,7 @@ interface StudentFormProps {
 }
 
 export default function StudentForm({ onSubmit, initialData }: StudentFormProps) {
+  const { settings } = useSettings();
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
     targetScore: 30,
@@ -179,15 +183,11 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
           required
         >
           <option value="" disabled>Select Trainer</option>
-          <option value="Thanh An">Thanh An</option>
-          <option value="Hải Hà">Hải Hà</option>
-          <option value="Phương Tuyết">Phương Tuyết</option>
-          <option value="Bích Diệp">Bích Diệp</option>
-          <option value="Thanh Tâm">Thanh Tâm</option>
-          <option value="Thu Hương">Thu Hương</option>
-          <option value="Thanh Hương">Thanh Hương</option>
-          <option value="Bạch Yến">Bạch Yến</option>
-          <option value="Dung Nguyễn">Dung Nguyễn</option>
+          {settings.students.trainerOptions.map((trainer) => (
+            <option key={trainer} value={trainer}>
+              {trainer}
+            </option>
+          ))}
         </select>
       </div>
 

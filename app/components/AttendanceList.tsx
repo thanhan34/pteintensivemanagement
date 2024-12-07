@@ -5,9 +5,11 @@ import { db } from '../config/firebase';
 import { collection, query, doc, where, getDoc, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { AttendanceRecord, User } from '../types/roles';
+import { useSettings } from '../hooks/useSettings';
 
 export default function AttendanceList() {
   const { data: session, status } = useSession();
+  const { settings } = useSettings();
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([]);
   const [trainerNames, setTrainerNames] = useState<{ [key: string]: string }>({});
@@ -22,9 +24,8 @@ export default function AttendanceList() {
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
 
   // Date range state
-  const currentDate = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState(currentDate);
-  const [endDate, setEndDate] = useState(currentDate);
+  const [startDate, setStartDate] = useState(settings.attendance.defaultFromDate);
+  const [endDate, setEndDate] = useState(settings.attendance.defaultToDate);
 
   const isAdmin = session?.user?.role === 'admin';
   const isTrainer = session?.user?.role === 'trainer';
@@ -32,6 +33,12 @@ export default function AttendanceList() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Update dates when settings change
+  useEffect(() => {
+    setStartDate(settings.attendance.defaultFromDate);
+    setEndDate(settings.attendance.defaultToDate);
+  }, [settings]);
 
   // Fetch all trainers for admin filter
   const setupTrainersListener = useCallback(() => {

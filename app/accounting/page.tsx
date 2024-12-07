@@ -6,6 +6,7 @@ import { OperationFee, OperationFeeInput } from '../types/operation';
 import { collection, getDocs, addDoc, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import * as XLSX from 'xlsx';
+import { useSettings } from '../hooks/useSettings';
 
 interface StudentExportData {
   [key: string]: string | number;
@@ -29,6 +30,7 @@ interface OperationFeeExportData {
 type StudentType = 'one-on-one' | 'class' | '2345';
 
 export default function AccountingPage() {
+  const { settings } = useSettings();
   const [students, setStudents] = useState<Student[]>([]);
   const [operationFees, setOperationFees] = useState<OperationFee[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,12 +38,11 @@ export default function AccountingPage() {
   const [minTargetScore, setMinTargetScore] = useState<number | ''>('');
   const [maxTargetScore, setMaxTargetScore] = useState<number | ''>('');
   const [activeFeeTab, setActiveFeeTab] = useState<StudentType>('class');
-  // const [activeFeeTab, setActiveFeeTab] = useState<StudentType>('class');
   
   // Date range states
   const currentDate = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState('2023-10-31');
-  const [endDate, setEndDate] = useState(currentDate);
+  const [startDate, setStartDate] = useState(settings.accounting.defaultFromDate || currentDate);
+  const [endDate] = useState(currentDate); // Always use current date for end date
   
   const [newFee, setNewFee] = useState<OperationFeeInput>({
     trainerName: '',
@@ -64,6 +65,13 @@ export default function AccountingPage() {
   // Sorting states
   const [studentSort, setStudentSort] = useState<'asc' | 'desc'>('asc');
   const [operationSort, setOperationSort] = useState<'asc' | 'desc'>('asc');
+
+  // Update start date when settings change
+  useEffect(() => {
+    if (settings.accounting.defaultFromDate) {
+      setStartDate(settings.accounting.defaultFromDate);
+    }
+  }, [settings]);
 
   // Format number to VND
   const formatVND = (amount: number): string => {
@@ -279,7 +287,7 @@ export default function AccountingPage() {
                   type="date"
                   className="border p-2 rounded"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled
                 />
               </div>
             </div>

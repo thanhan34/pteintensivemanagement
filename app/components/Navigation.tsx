@@ -31,6 +31,12 @@ export default function Navigation() {
             >
               Accounting
             </Link>
+            <Link
+              href="/settings"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Settings
+            </Link>
           </>
         );
       case 'trainer':
