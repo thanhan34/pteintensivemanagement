@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/app/config/firebase';
 import { Student } from '@/app/types/student';
 import { sendCourseEndReminder } from '@/app/utils/emailService';
