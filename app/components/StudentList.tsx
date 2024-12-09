@@ -142,6 +142,9 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
               <th className="px-4 py-2 border">Duration</th>
               <th className="px-4 py-2 border">Tuition Fee</th>
               <th className="px-4 py-2 border">Payment Status</th>
+              {activeTab === 'one-on-one' && (
+                <th className="px-4 py-2 border">Process Status</th>
+              )}
               <th className="px-4 py-2 border">Payment Dates</th>
               <th className="px-4 py-2 border">Notes</th>
               <th className="px-4 py-2 border">Actions</th>
@@ -163,6 +166,13 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
                     {student.tuitionPaymentStatus.charAt(0).toUpperCase() + student.tuitionPaymentStatus.slice(1)}
                   </span>
                 </td>
+                {activeTab === 'one-on-one' && (
+                  <td className="px-4 py-2 border">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${student.isProcess ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {student.isProcess ? 'Processed' : 'Not Processed'}
+                    </span>
+                  </td>
+                )}
                 <td className="px-4 py-2 border">
                   {student.tuitionPaymentDates.map((date) => (
                     <div key={date}>{formatDate(date)}</div>

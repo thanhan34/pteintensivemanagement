@@ -21,7 +21,8 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
     trainerName: '',
     tuitionFee: 6500000,
     notes: '',
-    type: 'class'
+    type: 'class',
+    isProcess: false
   });
 
   const [newPaymentDate, setNewPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -38,7 +39,8 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
         trainerName: initialData.trainerName,
         tuitionFee: initialData.tuitionFee,
         notes: initialData.notes,
-        type: initialData.type || 'class'
+        type: initialData.type || 'class',
+        isProcess: initialData.isProcess || false
       });
     }
   }, [initialData]);
@@ -68,7 +70,8 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
           trainerName: '',
           tuitionFee: 6500000,
           notes: '',
-          type: 'class'
+          type: 'class',
+          isProcess: false
         });
       }
     } catch (error) {
@@ -127,6 +130,20 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
           <option value="one-on-one">1-1</option>
         </select>
       </div>
+
+      {formData.type === 'one-on-one' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Process Status</label>
+          <select
+            value={formData.isProcess ? 'true' : 'false'}
+            onChange={(e) => setFormData({...formData, isProcess: e.target.value === 'true'})}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+          >
+            <option value="false">Not Processed</option>
+            <option value="true">Processed</option>
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Target Score</label>

@@ -8,6 +8,7 @@ export interface OperationFee {
   notes: string;
   type: 'one-on-one' | 'class' | '2345';
   createdAt: string | FieldValue | Timestamp;
+  isProcess?: boolean;
 }
 
 export type OperationFeeInput = Omit<OperationFee, 'id' | 'createdAt'>;
