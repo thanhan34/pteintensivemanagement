@@ -117,6 +117,9 @@ export default function AccountingPage() {
       'Payment Dates': student.tuitionPaymentDates.map(date => formatDate(date)).join(', '),
       'Tuition Fee': student.tuitionFee,
       'Payment Status': student.tuitionPaymentStatus,
+      ...(student.type === 'one-on-one' ? {
+        'Trainer': student.notes.match(/với\s+([^-\n]+)/)?.[1]?.trim() || ''
+      } : {}),
       'Notes': student.notes,
       'Process Status': student.type === 'one-on-one' ? (student.isProcess ? 'Processed' : 'Not Processed') : 'N/A'
     }));

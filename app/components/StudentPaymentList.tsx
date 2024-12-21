@@ -94,6 +94,9 @@ export default function StudentPaymentList({
               <th className="px-4 py-2 border">Payment Dates</th>
               <th className="px-4 py-2 border">Tuition Fee</th>
               <th className="px-4 py-2 border">Payment Status</th>
+              {activeTab === 'one-on-one' && (
+                <th className="px-4 py-2 border">Trainer</th>
+              )}
               <th className="px-4 py-2 border">Notes</th>
               {activeTab === 'one-on-one' && (
                 <th className="px-4 py-2 border">Process Status</th>
@@ -119,6 +122,11 @@ export default function StudentPaymentList({
                 </td>
                 <td className="px-4 py-2 border">{formatVND(student.tuitionFee)}</td>
                 <td className="px-4 py-2 border">{student.tuitionPaymentStatus}</td>
+                {activeTab === 'one-on-one' && (
+                  <td className="px-4 py-2 border">
+                    {student.notes.match(/với\s+([^-\n]+)/)?.[1]?.trim() || ''}
+                  </td>
+                )}
                 <td className="px-4 py-2 border">{student.notes}</td>
                 {activeTab === 'one-on-one' && (
                   <td className="px-4 py-2 border">
