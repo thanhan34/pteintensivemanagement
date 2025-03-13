@@ -7,11 +7,12 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Always allow access to auth-related paths
+    // Always allow access to auth-related paths and public registration
     if (
       path.startsWith('/_next') ||
       path.startsWith('/api/auth') ||
       path.startsWith('/auth') ||
+      path.startsWith('/register') ||
       path === '/favicon.ico'
     ) {
       return NextResponse.next();
