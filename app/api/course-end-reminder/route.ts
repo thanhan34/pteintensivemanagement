@@ -3,9 +3,29 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/app/config/firebase';
 import { Student } from '@/app/types/student';
 import { sendCourseEndReminder } from '@/app/utils/emailService';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/config/auth';
 
-export async function GET() {
+// Generate a secure token for cron job authentication
+const CRON_SECRET = process.env.CRON_SECRET || 'pte-intensive-cron-2024-secure';
+
+export async function GET(request: Request) {
   try {
+    // Check if this is an authorized cron job request
+    const authHeader = request.headers.get('Authorization');
+    const isAuthorizedCron = authHeader === `Bearer ${CRON_SECRET}`;
+    
+    if (!isAuthorizedCron) {
+      // If it's not an authorized cron request, check user authentication
+      const session = await getServerSession(authOptions);
+      if (!session) {
+        return NextResponse.json(
+          { success: false, message: 'Unauthorized access', error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+    }
+
     const studentsRef = collection(db, 'students');
     const now = new Date();
     

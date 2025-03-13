@@ -1,12 +1,2 @@
 {
-  "crons": [
-    {
-      "path": "/api/payment-reminder",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/course-end-reminder",
-      "schedule": "0 2 * * *"
-    }
-  ]
 }

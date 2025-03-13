@@ -21,12 +21,11 @@ interface SendGridErrorResponse {
 
 export async function GET(request: Request) {
   try {
-    // Check if this is a Vercel cron job request
+    // Check if this is an authorized cron job request
     const authHeader = request.headers.get('Authorization');
-    const isVercelCron = request.headers.get('user-agent')?.includes('vercel-cron');
     const isAuthorizedCron = authHeader === `Bearer ${CRON_SECRET}`;
     
-    if (!isVercelCron || !isAuthorizedCron) {
+    if (!isAuthorizedCron) {
       // If it's not a Vercel cron request, check user authentication
       const session = await getServerSession(authOptions);
       if (!session) {
