@@ -25,7 +25,7 @@ export default function PublicStudentForm({ onSubmit }: PublicStudentFormProps) 
     trainerName: '',
     tuitionFee: 6500000,
     notes: '',
-    type: 'class',
+    type: 'class', // Default to class
     isProcess: false
   });
 
@@ -36,7 +36,12 @@ export default function PublicStudentForm({ onSubmit }: PublicStudentFormProps) 
     setIsSubmitting(true);
     
     try {
-      await onSubmit(formData);
+      // Ensure payment date is set to current date
+      const submissionData = {
+        ...formData,
+        tuitionPaymentDates: [currentDate]
+      };
+      await onSubmit(submissionData);
     } catch (error) {
       console.error('Error submitting form:', error);
     } finally {
@@ -109,20 +114,6 @@ export default function PublicStudentForm({ onSubmit }: PublicStudentFormProps) 
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01] text-base"
           required
         />
-      </div>
-
-      <div>
-        <label className="block text-base font-medium text-gray-700">Loại khóa học</label>
-        <select
-          value={formData.type}
-          onChange={(e) => setFormData({...formData, type: e.target.value as 'one-on-one' | 'class' | '2345'})}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01] text-base"
-          required
-        >
-          <option value="class">Lớp học</option>
-          <option value="2345">2345</option>
-          <option value="one-on-one">1-1</option>
-        </select>
       </div>
 
       <div>
