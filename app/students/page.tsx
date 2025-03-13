@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { db } from '../config/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, getDoc } from 'firebase/firestore';
 import StudentForm from '../components/StudentForm';
 import StudentList from '../components/StudentList';
 import { Student, StudentFormData } from '../types/student';
+import { Settings } from '../types/settings';
 
 export default function Students() {
   const { data: session, status } = useSession();
@@ -15,9 +16,26 @@ export default function Students() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
 
   const isAdmin = session?.user?.role === 'admin';
   const isAssistant = session?.user?.role === 'administrative_assistant';
+
+  // Fetch settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settingsDoc = await getDoc(doc(db, 'settings', 'global'));
+        if (settingsDoc.exists()) {
+          setSettings(settingsDoc.data() as Settings);
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      }
+    };
+
+    fetchSettings();
+  }, []);
 
   // Fetch students only for admin users
   const fetchStudents = useCallback(async () => {
@@ -204,6 +222,7 @@ export default function Students() {
                   students={students}
                   onEdit={handleEditStudent}
                   onDelete={handleDeleteStudent}
+                  defaultDateRange={settings?.students}
                 />
               ) : (
                 <div className="bg-white rounded-lg shadow p-8">

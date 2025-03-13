@@ -116,6 +116,39 @@ export default function SettingsForm({ initialSettings, onSave }: SettingsFormPr
               placeholder="Enter trainer options separated by commas"
             />
           </div>
+          
+          <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="students-from" className="block text-sm font-medium text-gray-700">
+                Default From Date
+              </label>
+              <input
+                type="date"
+                id="students-from"
+                value={settings.students.defaultFromDate}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  students: { ...prev.students, defaultFromDate: e.target.value }
+                }))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01] sm:text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor="students-to" className="block text-sm font-medium text-gray-700">
+                Default To Date
+              </label>
+              <input
+                type="date"
+                id="students-to"
+                value={settings.students.defaultToDate}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  students: { ...prev.students, defaultToDate: e.target.value }
+                }))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01] sm:text-sm"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

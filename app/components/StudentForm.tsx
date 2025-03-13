@@ -13,6 +13,11 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
   const { settings } = useSettings();
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
+    phone: '',
+    dob: new Date().toISOString().split('T')[0],
+    referrer: '',
+    province: '',
+    country: 'Vietnam',
     targetScore: 30,
     startDate: new Date().toISOString().split('T')[0],
     studyDuration: 1,
@@ -31,6 +36,11 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
     if (initialData) {
       setFormData({
         name: initialData.name,
+        phone: initialData.phone || '',
+        dob: initialData.dob || new Date().toISOString().split('T')[0],
+        referrer: initialData.referrer || '',
+        province: initialData.province || '',
+        country: initialData.country || 'Vietnam',
         targetScore: initialData.targetScore,
         startDate: initialData.startDate,
         studyDuration: initialData.studyDuration,
@@ -62,6 +72,11 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
         // Only reset form if this is a new student (not editing)
         setFormData({
           name: '',
+          phone: '',
+          dob: new Date().toISOString().split('T')[0],
+          referrer: '',
+          province: '',
+          country: 'Vietnam',
           targetScore: 30,
           startDate: new Date().toISOString().split('T')[0],
           studyDuration: 1,
@@ -114,6 +129,56 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
           onChange={(e) => setFormData({...formData, name: e.target.value})}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
           required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Phone</label>
+        <input
+          type="tel"
+          value={formData.phone}
+          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+        <input
+          type="date"
+          value={formData.dob}
+          onChange={(e) => setFormData({...formData, dob: e.target.value})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Referrer</label>
+        <input
+          type="text"
+          value={formData.referrer}
+          onChange={(e) => setFormData({...formData, referrer: e.target.value})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Province/City</label>
+        <input
+          type="text"
+          value={formData.province}
+          onChange={(e) => setFormData({...formData, province: e.target.value})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Country</label>
+        <input
+          type="text"
+          value={formData.country}
+          onChange={(e) => setFormData({...formData, country: e.target.value})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
         />
       </div>
 

@@ -1,6 +1,11 @@
 export interface Student {
   id: string;
   name: string;
+  phone: string;
+  dob: string; // date of birth
+  referrer: string;
+  province: string; // Province/City
+  country: string; // Country
   targetScore: number;
   startDate: string;
   studyDuration: number; // in months

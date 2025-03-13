@@ -8,6 +8,8 @@ export interface Settings {
   };
   students: {
     trainerOptions: string[];
+    defaultFromDate: string;
+    defaultToDate: string;
   };
 }
 
