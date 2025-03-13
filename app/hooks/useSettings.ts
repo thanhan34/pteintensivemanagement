@@ -15,6 +15,8 @@ const defaultSettings: Settings = {
   },
   students: {
     trainerOptions: [],
+    defaultFromDate: new Date().toISOString().split('T')[0],
+    defaultToDate: new Date().toISOString().split('T')[0],
   },
 };
 
