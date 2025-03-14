@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Student } from '../types/student';
 import { useSession } from 'next-auth/react';
+import * as XLSX from 'xlsx';
 
 interface StudentListProps {
   students: Student[];
@@ -105,6 +106,49 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
     }).format(amount);
   };
 
+  // Excel export function
+  const exportToExcel = () => {
+    // Prepare data for export
+    const exportData = filteredAndSortedStudents.map(student => {
+      // Format payment dates as a comma-separated string
+      const paymentDates = student.tuitionPaymentDates.map(date => formatDate(date)).join(', ');
+      
+      return {
+        'Name': student.name,
+        'Phone': student.phone,
+        'Province': student.province,
+        'Country': student.country || 'Vietnam',
+        'Date of Birth': student.dob ? formatDate(student.dob) : '-',
+        'Start Date': formatDate(student.startDate),
+        'Duration (months)': student.studyDuration,
+        'Target Score': student.targetScore,
+        'Trainer': student.trainerName,
+        'Tuition Fee': student.tuitionFee,
+        'Payment Status': student.tuitionPaymentStatus,
+        'Payment Dates': paymentDates,
+        'Referrer': student.referrer || '-',
+        'Notes': student.notes || '-',
+        'Type': student.type || 'class',
+        'Process Status': student.isProcess ? 'Processed' : 'Not Processed'
+      };
+    });
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `${activeTab}-students`);
+    
+    // Generate filename with current date
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const fileName = `pte-students-${activeTab}-${dateStr}.xlsx`;
+    
+    // Export to file
+    XLSX.writeFile(workbook, fileName);
+  };
+
   return (
     <div className="mt-8">
       {/* Tabs */}
@@ -187,15 +231,26 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#fc5d01]"
           />
         </div>
-        <button
-          onClick={() => {
-            setStartDateFilter('');
-            setEndDateFilter('');
-          }}
-          className="px-4 py-2 bg-[#fc5d01] text-white rounded-md hover:bg-[#fd7f33]"
-        >
-          Clear Filters
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setStartDateFilter('');
+              setEndDateFilter('');
+            }}
+            className="px-4 py-2 bg-[#fc5d01] text-white rounded-md hover:bg-[#fd7f33]"
+          >
+            Clear Filters
+          </button>
+          <button
+            onClick={exportToExcel}
+            className="px-4 py-2 bg-[#fc5d01] text-white rounded-md hover:bg-[#fd7f33] flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Export Excel
+          </button>
+        </div>
       </div>
 
       {/* List-based Student List with Expandable Sections */}
