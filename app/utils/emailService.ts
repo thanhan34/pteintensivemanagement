@@ -7,6 +7,15 @@ if (!process.env.SENDGRID_API_KEY) {
 }
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+interface RegistrationNotificationData {
+  name: string;
+  phone: string;
+  dob: string;
+  province: string;
+  targetScore: number;
+  tuitionFee: number;
+}
+
 interface PaymentReminderData {
   studentName: string;
   startDate: string;
@@ -30,6 +39,65 @@ interface SendGridErrorResponse {
     statusCode: number;
   };
 }
+
+export const sendRegistrationNotification = async (studentData: RegistrationNotificationData) => {
+  if (!process.env.SENDER_EMAIL) {
+    throw new Error('SENDER_EMAIL is not defined in environment variables');
+  }
+
+  const msg = {
+    to: 'dtan42@gmail.com', // Email admin cố định
+    from: {
+      email: process.env.SENDER_EMAIL,
+      name: 'PTE Intensive Management'
+    },
+    subject: 'PTE Intensive - Đăng ký học viên mới',
+    text: `
+    Một học viên mới đã đăng ký:
+    
+    Họ tên: ${studentData.name}
+    Số điện thoại: ${studentData.phone}
+    Ngày sinh: ${new Date(studentData.dob).toLocaleDateString()}
+    Tỉnh/Thành phố: ${studentData.province}
+    Điểm mục tiêu: ${studentData.targetScore}
+    Học phí: ${studentData.tuitionFee.toLocaleString()} VND
+    
+    Vui lòng đăng nhập vào hệ thống để xem thông tin chi tiết.
+    `,
+    html: `
+    <h2>Đăng ký học viên mới</h2>
+    <p>Một học viên mới đã đăng ký vào hệ thống:</p>
+    <div style="margin: 20px 0; padding: 15px; background-color: #fff5ef; border-left: 4px solid #fc5d01;">
+      <p><strong>Họ tên:</strong> ${studentData.name}</p>
+      <p><strong>Số điện thoại:</strong> ${studentData.phone}</p>
+      <p><strong>Ngày sinh:</strong> ${new Date(studentData.dob).toLocaleDateString()}</p>
+      <p><strong>Tỉnh/Thành phố:</strong> ${studentData.province}</p>
+      <p><strong>Điểm mục tiêu:</strong> ${studentData.targetScore}</p>
+      <p><strong>Học phí:</strong> ${studentData.tuitionFee.toLocaleString()} VND</p>
+    </div>
+    <p>Vui lòng <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://pte-management.vercel.app'}/students" style="color: #fc5d01; text-decoration: underline;">đăng nhập vào hệ thống</a> để xem thông tin chi tiết.</p>
+    `,
+  };
+
+  try {
+    console.log('Đang gửi email thông báo đăng ký học viên mới...');
+    const response = await sgMail.send(msg);
+    console.log('Email thông báo đăng ký đã được gửi thành công');
+    return response;
+  } catch (error) {
+    const sendGridError = error as SendGridErrorResponse;
+    console.error('Lỗi khi gửi email thông báo đăng ký:');
+    console.error('Mã lỗi:', sendGridError.code);
+    console.error('Thông báo lỗi:', sendGridError.message);
+    if (sendGridError.response) {
+      console.error('SendGrid API Error Response:');
+      console.error('Status code:', sendGridError.response.statusCode);
+      console.error('Body:', sendGridError.response.body);
+      console.error('Headers:', sendGridError.response.headers);
+    }
+    throw error;
+  }
+};
 
 export const sendPaymentReminder = async (overdueStudents: PaymentReminderData[]) => {
   if (!overdueStudents.length) return;

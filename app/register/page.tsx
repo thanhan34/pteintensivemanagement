@@ -20,6 +20,33 @@ export default function Register() {
         updatedAt: new Date().toISOString()
       });
       
+      // Gửi email thông báo cho admin thông qua API route
+      try {
+        const response = await fetch('/api/registration-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            phone: formData.phone,
+            dob: formData.dob,
+            province: formData.province,
+            targetScore: formData.targetScore,
+            tuitionFee: formData.tuitionFee
+          }),
+        });
+        
+        if (response.ok) {
+          console.log('Đã gửi email thông báo đăng ký thành công');
+        } else {
+          console.error('Lỗi khi gửi email thông báo:', await response.text());
+        }
+      } catch (emailError) {
+        // Ghi log lỗi nhưng không ảnh hưởng đến trải nghiệm người dùng
+        console.error('Lỗi khi gửi email thông báo:', emailError);
+      }
+      
       setSubmitted(true);
       setError(null);
     } catch (err) {
