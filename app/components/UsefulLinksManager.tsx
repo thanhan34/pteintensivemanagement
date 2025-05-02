@@ -10,6 +10,7 @@ export default function UsefulLinksManager() {
   const [loading, setLoading] = useState(true);
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [isEditingLink, setIsEditingLink] = useState<string | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Omit<UsefulLink, 'id' | 'createdAt' | 'updatedAt'>>({
     title: '',
     url: '',
@@ -19,6 +20,16 @@ export default function UsefulLinksManager() {
   useEffect(() => {
     fetchLinks();
   }, []);
+
+  // Clear the copied notification after 2 seconds
+  useEffect(() => {
+    if (copiedLinkId) {
+      const timer = setTimeout(() => {
+        setCopiedLinkId(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copiedLinkId]);
 
   const fetchLinks = async () => {
     try {
@@ -108,6 +119,15 @@ export default function UsefulLinksManager() {
     });
     setIsEditingLink(link.id);
     setIsAddingLink(false);
+  };
+
+  const copyToClipboard = async (text: string, linkId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedLinkId(linkId);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
   };
 
   if (loading) {
@@ -228,6 +248,16 @@ export default function UsefulLinksManager() {
                     </p>
                   </div>
                   <div className="ml-4 flex-shrink-0 flex space-x-2">
+                    <button
+                      onClick={() => copyToClipboard(link.url, link.id)}
+                      className={`text-sm font-medium transition-all duration-200 ${
+                        copiedLinkId === link.id 
+                          ? 'bg-[#fedac2] text-[#fc5d01] px-2 py-1 rounded' 
+                          : 'text-[#fd7f33] hover:text-[#fc5d01]'
+                      }`}
+                    >
+                      {copiedLinkId === link.id ? 'Copied!' : 'Copy Link'}
+                    </button>
                     <button
                       onClick={() => startEditing(link)}
                       className="text-sm font-medium text-[#fc5d01] hover:text-[#db5101]"
