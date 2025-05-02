@@ -39,6 +39,12 @@ export default function Navigation() {
               Analytics
             </Link>
             <Link
+              href="/users"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Users
+            </Link>
+            <Link
               href="/settings"
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
