@@ -50,6 +50,12 @@ export default function Navigation() {
             >
               Settings
             </Link>
+            <Link
+              href="/useful-links"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Useful Links
+            </Link>
           </>
         );
       case 'trainer':
