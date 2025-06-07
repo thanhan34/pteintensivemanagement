@@ -22,7 +22,7 @@ import {
   Calendar as CalendarDays,
   Target
 } from 'lucide-react';
-import { format, startOfDay, endOfDay, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface FilterPanelProps {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
-import { Project, Task, Label, CreateTaskData, TaskStatus } from '../../types/task';
+import { Project, Task, Label, TaskStatus } from '../../types/task';
 import { taskService, projectService, labelService, userService } from '../../utils/taskService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,23 +11,15 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { 
   Plus, 
   ArrowLeft, 
   Users, 
-  Calendar, 
-  CheckCircle2, 
-  Circle, 
-  Clock, 
-  AlertTriangle,
   UserPlus,
   Settings,
-  MoreHorizontal,
-  Mail
 } from 'lucide-react';
-import { format } from 'date-fns';
 import TaskForm from '../../components/TaskForm';
 import TaskCard from '../../components/TaskCard';
 import KanbanBoard from '../../components/KanbanBoard';
@@ -41,7 +33,12 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Array<{
+    id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<'list' | 'kanban'>('list');
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -181,7 +178,7 @@ export default function ProjectDetailPage() {
       <div className="container mx-auto p-6">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Project not found</h2>
-          <p className="text-muted-foreground mb-4">The project you're looking for doesn't exist or you don't have access to it.</p>
+                  <p className="text-muted-foreground mb-4">The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
           <Button onClick={() => router.push('/tasks')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Tasks

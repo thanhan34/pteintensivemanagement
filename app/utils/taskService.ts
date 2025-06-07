@@ -18,7 +18,6 @@ import {
   Task, 
   Project, 
   Label, 
-  TaskComment, 
   UserStats,
   CreateTaskData,
   CreateProjectData,
@@ -31,15 +30,17 @@ import {
 const TASKS_COLLECTION = 'tasks';
 const PROJECTS_COLLECTION = 'projects';
 const LABELS_COLLECTION = 'labels';
-const COMMENTS_COLLECTION = 'task_comments';
 const USER_STATS_COLLECTION = 'user_stats';
 
 // Helper function to convert Firestore timestamp to Date
-const timestampToDate = (timestamp: any): Date => {
-  if (timestamp?.toDate) {
+const timestampToDate = (timestamp: Timestamp | { toDate(): Date } | Date | null): Date => {
+  if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
     return timestamp.toDate();
   }
-  return new Date(timestamp);
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  return new Date();
 };
 
 // Helper function to convert Date to Firestore timestamp
@@ -182,7 +183,7 @@ export const taskService = {
   async updateTask(taskId: string, updates: Partial<Task>): Promise<void> {
     try {
       const taskRef = doc(db, TASKS_COLLECTION, taskId);
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         ...updates,
         updatedAt: dateToTimestamp(new Date())
       };
@@ -453,11 +454,21 @@ export const labelService = {
 // User Services
 export const userService = {
   // Get all users
-  async getUsers(): Promise<any[]> {
+  async getUsers(): Promise<Array<{
+    id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  }>> {
     try {
       const q = query(collection(db, 'users'), orderBy('name', 'asc'));
       const querySnapshot = await getDocs(q);
-      const users: any[] = [];
+      const users: Array<{
+        id: string;
+        name?: string;
+        email?: string;
+        role?: string;
+      }> = [];
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -475,7 +486,12 @@ export const userService = {
   },
 
   // Get user by email
-  async getUserByEmail(email: string): Promise<any | null> {
+  async getUserByEmail(email: string): Promise<{
+    id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  } | null> {
     try {
       const q = query(collection(db, 'users'), where('email', '==', email));
       const querySnapshot = await getDocs(q);

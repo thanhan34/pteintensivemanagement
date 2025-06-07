@@ -2,39 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Task, Project, Label, TaskFilter, TaskStatus, CreateProjectData } from '../types/task';
-import { taskService, projectService, labelService } from '../utils/taskService';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Task, Project, CreateProjectData } from '../types/task';
+import { taskService, projectService } from '../utils/taskService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Plus, 
   Search, 
-  Filter, 
-  Calendar, 
-  User, 
-  Tag, 
   CheckCircle2, 
-  Circle, 
-  Clock, 
   AlertTriangle,
-  MoreHorizontal,
-  Edit,
-  Trash2,
   Users
 } from 'lucide-react';
-import TaskForm from '../components/TaskForm';
-import KanbanBoard from '../components/KanbanBoard';
-import TaskCard from '../components/TaskCard';
-import FilterPanel from '../components/FilterPanel';
 
 // Project Form Component
 interface ProjectFormProps {
@@ -149,7 +131,6 @@ export default function TasksPage() {
   const { data: session } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -159,15 +140,13 @@ export default function TasksPage() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [tasksData, projectsData, labelsData] = await Promise.all([
+        const [tasksData, projectsData] = await Promise.all([
           taskService.getTasks(),
-          projectService.getProjects(),
-          labelService.getLabels()
+          projectService.getProjects()
         ]);
         
         setTasks(tasksData);
         setProjects(projectsData);
-        setLabels(labelsData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {

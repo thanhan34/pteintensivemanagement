@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Task, Project, Label, TaskStatus, KanbanColumn } from '../types/task';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,7 +11,6 @@ import {
   Circle, 
   Clock, 
   Calendar,
-  Tag,
   Plus,
   AlertTriangle
 } from 'lucide-react';
@@ -34,7 +33,7 @@ interface KanbanTaskCardProps {
   onComplete: (taskId: string) => void;
 }
 
-function KanbanTaskCard({ task, projects, labels, onStatusChange, onComplete }: KanbanTaskCardProps) {
+function KanbanTaskCard({ task, projects, labels }: KanbanTaskCardProps) {
   const project = projects.find(p => p.id === task.projectId);
   const taskLabels = labels.filter(l => task.labels.includes(l.id));
 
@@ -56,11 +55,6 @@ function KanbanTaskCard({ task, projects, labels, onStatusChange, onComplete }: 
 
   const isOverdue = task.status !== 'done' && isPast(task.dueDate);
 
-  const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData('text/plain', task.id);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
   return (
     <Card 
       className={cn(
@@ -69,7 +63,10 @@ function KanbanTaskCard({ task, projects, labels, onStatusChange, onComplete }: 
         isOverdue && "border-red-200 bg-red-50"
       )}
       draggable
-      onDragStart={handleDragStart}
+      onDragStart={(e: React.DragEvent) => {
+        e.dataTransfer.setData('text/plain', task.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
     >
       <CardContent className="p-3">
         <div className="space-y-2">
@@ -202,9 +199,6 @@ export default function KanbanBoard({ tasks, projects, labels, onStatusChange, o
     setDraggedTaskId(null);
   };
 
-  const handleDragStart = (taskId: string) => {
-    setDraggedTaskId(taskId);
-  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-300px)]">

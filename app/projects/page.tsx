@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Project, CreateProjectData } from '../types/task';
 import { projectService } from '../utils/taskService';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label as UILabel } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { 
   Plus, 
   Search, 
@@ -20,7 +19,6 @@ import {
   Users,
   Calendar,
   FolderOpen,
-  MoreHorizontal
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';

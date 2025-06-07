@@ -81,7 +81,7 @@ export default function OfflinePage() {
                 </svg>
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                You're Offline
+                You&apos;re Offline
               </h1>
               <p className="text-gray-600 mb-6">
                 No internet connection detected. Some features may not be available, but you can still browse cached content.

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Task, Project, Label, TaskStatus } from '../types/task';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,7 +13,6 @@ import {
   Circle, 
   Clock, 
   Calendar,
-  User,
   Tag,
   MoreHorizontal,
   Edit,
