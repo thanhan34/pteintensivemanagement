@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import UserProfile from './UserProfile';
 
+// Updated: Removed Projects and Labels from navigation - v2
+
 export default function Navigation() {
   const { data: session, status } = useSession();
   const userRole = session?.user?.role;
@@ -19,6 +21,12 @@ export default function Navigation() {
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
               Students
+            </Link>
+            <Link
+              href="/tasks"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Tasks
             </Link>
             <Link
               href="/attendance"
@@ -60,21 +68,37 @@ export default function Navigation() {
         );
       case 'trainer':
         return (
-          <Link
-            href="/attendance"
-            className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
-          >
-            Attendance
-          </Link>
+          <>
+            <Link
+              href="/tasks"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Tasks
+            </Link>
+            <Link
+              href="/attendance"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Attendance
+            </Link>
+          </>
         );
       case 'administrative_assistant':
         return (
-          <Link
-            href="/students"
-            className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
-          >
-            Students
-          </Link>
+          <>
+            <Link
+              href="/students"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Students
+            </Link>
+            <Link
+              href="/tasks"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Tasks
+            </Link>
+          </>
         );
       default:
         return null;
