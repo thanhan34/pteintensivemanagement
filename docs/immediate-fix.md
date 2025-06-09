@@ -86,7 +86,7 @@ service cloud.firestore {
 ## Environment Variables Check
 Ensure these are set in .env.local:
 ```env
-NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_URL=httpss://localhost:3000
 NEXTAUTH_SECRET=your-secret-here
 
 GOOGLE_CLIENT_ID=your-client-id

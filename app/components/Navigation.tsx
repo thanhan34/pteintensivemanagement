@@ -91,17 +91,7 @@ export default function Navigation() {
                 PTE Management
               </Link>
             </div>
-            <div className="hidden md:ml-6 md:flex md:space-x-8">
-              {getNavigationLinks()}
-              {!isAuthenticated && (
-                <Link
-                  href="/register"
-                  className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Student Registration
-                </Link>
-              )}
-            </div>
+            
           </div>
           <div className="flex items-center">
             <UserProfile />

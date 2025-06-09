@@ -60,12 +60,7 @@ export default function HomePage() {
                 >
                   Sign In to Get Started
                 </Link>
-                <Link
-                  href="/register"
-                  className="inline-block px-6 py-3 border border-[#fc5d01] text-base font-medium rounded-md text-[#fc5d01] bg-white hover:bg-[#fedac2]"
-                >
-                  Register as Student
-                </Link>
+                
               </div>
             )}
           </div>

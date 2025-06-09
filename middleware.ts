@@ -11,8 +11,7 @@ export default withAuth(
     if (
       path.startsWith('/_next') ||
       path.startsWith('/api/auth') ||
-      path.startsWith('/auth') ||
-      path.startsWith('/register') ||
+      path.startsWith('/auth') ||      
       path === '/favicon.ico'
     ) {
       return NextResponse.next();
