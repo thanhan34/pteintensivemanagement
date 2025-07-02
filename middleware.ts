@@ -42,9 +42,9 @@ export default withAuth(
       return NextResponse.redirect(new URL('/attendance', req.url));
     }
 
-    // Administrative assistant can access students and tasks
+    // Administrative assistant can access students, tasks, and attendance
     if (role === 'administrative_assistant') {
-      if (path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects')) {
+      if (path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/attendance')) {
         return NextResponse.next();
       }
       return NextResponse.redirect(new URL('/students', req.url));

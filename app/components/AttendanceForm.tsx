@@ -53,6 +53,8 @@ export default function AttendanceForm() {
         totalHours,
         status: 'pending',
         notes: notes || '', // Set empty string as default if notes is empty
+        createdBy: session.user.id,
+        isBackfill: false,
       };
 
       // Add attendance record to Firestore

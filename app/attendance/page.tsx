@@ -6,10 +6,12 @@ import { db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import AttendanceForm from '../components/AttendanceForm';
 import AttendanceList from '../components/AttendanceList';
+import TrainerDashboard from '../components/TrainerDashboard';
+import BackfillForm from '../components/BackfillForm';
 
 export default function AttendancePage() {
   const { data: session, status } = useSession();
-  const [userRole, setUserRole] = useState<'trainer' | 'admin' | null>(null);
+  const [userRole, setUserRole] = useState<'trainer' | 'admin' | 'administrative_assistant' | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -72,17 +74,28 @@ export default function AttendancePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">
-        {userRole === 'admin' ? 'Attendance Management' : 'Attendance'}
+      <h1 className="text-3xl font-bold mb-8 text-[#fc5d01]">
+        {userRole === 'admin' ? 'Attendance Management' : 
+         userRole === 'administrative_assistant' ? 'Attendance & Backfill Management' : 
+         'My Attendance'}
       </h1>
 
-      {userRole === 'admin' ? (
-        <AttendanceList />
-      ) : (
+      {userRole === 'trainer' && (
         <div className="space-y-8">
-          <AttendanceForm />
+          <TrainerDashboard />
           <AttendanceList />
         </div>
+      )}
+
+      {userRole === 'administrative_assistant' && (
+        <div className="space-y-8">
+          <BackfillForm />
+          <AttendanceList />
+        </div>
+      )}
+
+      {userRole === 'admin' && (
+        <AttendanceList />
       )}
     </div>
   );

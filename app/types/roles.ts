@@ -18,6 +18,10 @@ export interface AttendanceRecord {
   notes?: string;
   approvedBy?: string;
   approvedAt?: string;
+  createdBy: string; // ID of user who created this record
+  isBackfill: boolean; // true if this is a backfill attendance
+  backfillReason?: string; // reason for backfill (required if isBackfill is true)
+  createdAt?: string;
 }
 
 export interface TrainerStats {

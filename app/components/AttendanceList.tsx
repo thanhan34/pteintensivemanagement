@@ -6,6 +6,7 @@ import { collection, query, doc, where, getDoc, updateDoc, onSnapshot, deleteDoc
 import { useSession } from 'next-auth/react';
 import { AttendanceRecord, User } from '../types/roles';
 import { useSettings } from '../hooks/useSettings';
+import * as XLSX from 'xlsx';
 
 export default function AttendanceList() {
   const { data: session, status } = useSession();
@@ -29,6 +30,7 @@ export default function AttendanceList() {
 
   const isAdmin = session?.user?.role === 'admin';
   const isTrainer = session?.user?.role === 'trainer';
+  const isAdminAssistant = session?.user?.role === 'administrative_assistant';
 
   useEffect(() => {
     setMounted(true);
@@ -42,7 +44,7 @@ export default function AttendanceList() {
 
   // Fetch all trainers for admin filter
   const setupTrainersListener = useCallback(() => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isAdminAssistant) return;
     
     try {
       const usersRef = collection(db, 'users');
@@ -79,7 +81,7 @@ export default function AttendanceList() {
       const attendanceRef = collection(db, 'attendance');
       let q;
 
-      if (isAdmin) {
+      if (isAdmin || isAdminAssistant) {
         if (selectedTrainerId) {
           q = query(attendanceRef, where('trainerId', '==', selectedTrainerId));
         } else {
@@ -267,6 +269,62 @@ export default function AttendanceList() {
     return { approvedHours, pendingHours };
   };
 
+  // Export to Excel function
+  const handleExportToExcel = () => {
+    try {
+      // Prepare data for export
+      const exportData = filteredRecords.map(record => ({
+        'Date': record.date,
+        'Trainer': trainerNames[record.trainerId] || 'Unknown',
+        'Start Time': record.startTime,
+        'End Time': record.endTime,
+        'Total Hours': record.totalHours.toFixed(2),
+        'Type': record.isBackfill ? 'Backfill' : 'Regular',
+        'Status': record.status.charAt(0).toUpperCase() + record.status.slice(1),
+        'Notes': record.notes || '',
+        'Backfill Reason': record.backfillReason || '',
+        'Created By': record.createdBy === record.trainerId ? 'Trainer' : 'Admin Assistant',
+        'Approved By': record.approvedBy || '',
+        'Approved At': record.approvedAt || ''
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 12 }, // Date
+        { wch: 20 }, // Trainer
+        { wch: 12 }, // Start Time
+        { wch: 12 }, // End Time
+        { wch: 12 }, // Total Hours
+        { wch: 10 }, // Type
+        { wch: 10 }, // Status
+        { wch: 30 }, // Notes
+        { wch: 30 }, // Backfill Reason
+        { wch: 15 }, // Created By
+        { wch: 20 }, // Approved By
+        { wch: 20 }  // Approved At
+      ];
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendance Records');
+
+      // Generate filename with date range
+      const filename = `Attendance_Records_${startDate}_to_${endDate}.xlsx`;
+
+      // Save file
+      XLSX.writeFile(wb, filename);
+
+      alert('Excel file exported successfully!');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      setError('Failed to export to Excel. Please try again.');
+    }
+  };
+
   if (!mounted) return null;
 
   if (status === 'loading' || loading) {
@@ -296,135 +354,296 @@ export default function AttendanceList() {
   const { approvedHours, pendingHours } = calculateHours();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto">
       {error && (
-        <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <span className="block sm:inline">{error}</span>
+        <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-6 py-4 rounded-r-lg shadow-md animate-pulse">
+          <div className="flex items-center">
+            <span className="text-red-500 mr-2 text-xl">⚠️</span>
+            <span className="font-medium">{error}</span>
+          </div>
         </div>
       )}
 
-      {/* Filters Section */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex flex-wrap gap-4 items-center">
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <label>Trainer:</label>
-              <select
-                className="border p-2 rounded"
-                value={selectedTrainerId}
-                onChange={(e) => setSelectedTrainerId(e.target.value)}
-              >
-                <option value="">All Trainers</option>
-                {trainers.map((trainer) => (
-                  <option key={trainer.id} value={trainer.id}>
-                    {trainer.name}
-                  </option>
-                ))}
-              </select>
+      {/* Enhanced Filters Section */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] p-6">
+          <h2 className="text-2xl font-bold text-white flex items-center">
+            <span className="mr-3">🔍</span>
+            Filter & Search
+          </h2>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {(isAdmin || isAdminAssistant) && (
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 flex items-center">
+                  <span className="mr-2">👤</span>
+                  Select Trainer
+                </label>
+                <select
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#fc5d01] focus:ring-2 focus:ring-[#fc5d01] focus:ring-opacity-20 transition-all duration-200 bg-white shadow-sm"
+                  value={selectedTrainerId}
+                  onChange={(e) => setSelectedTrainerId(e.target.value)}
+                >
+                  <option value="">All Trainers</option>
+                  {trainers.map((trainer) => (
+                    <option key={trainer.id} value={trainer.id}>
+                      {trainer.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 flex items-center">
+                <span className="mr-2">📅</span>
+                From Date
+              </label>
+              <input
+                type="date"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#fc5d01] focus:ring-2 focus:ring-[#fc5d01] focus:ring-opacity-20 transition-all duration-200 bg-white shadow-sm"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <label>From:</label>
-            <input
-              type="date"
-              className="border p-2 rounded"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label>To:</label>
-            <input
-              type="date"
-              className="border p-2 rounded"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 flex items-center">
+                <span className="mr-2">📅</span>
+                To Date
+              </label>
+              <input
+                type="date"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#fc5d01] focus:ring-2 focus:ring-[#fc5d01] focus:ring-opacity-20 transition-all duration-200 bg-white shadow-sm"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Summary Section */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-800">Approved Hours</h3>
-            <p className="text-2xl font-bold text-blue-600">{approvedHours.toFixed(2)} hours</p>
+      {/* Enhanced Summary Section */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] p-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-white flex items-center">
+              <span className="mr-3">📊</span>
+              Summary & Analytics
+            </h2>
+            {(isAdmin || isAdminAssistant) && filteredRecords.length > 0 && (
+              <button
+                onClick={handleExportToExcel}
+                className="bg-white text-[#fc5d01] px-6 py-3 rounded-xl font-bold transition-all duration-200 flex items-center space-x-2 hover:bg-gray-100 hover:scale-105 shadow-lg"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Export Excel</span>
+              </button>
+            )}
           </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-yellow-800">Pending Hours</h3>
-            <p className="text-2xl font-bold text-yellow-600">{pendingHours.toFixed(2)} hours</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-green-800">Records in Date Range</h3>
-            <p className="text-2xl font-bold text-green-600">{filteredRecords.length}</p>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-3xl">✅</div>
+                <div className="text-green-600 text-sm font-medium">APPROVED</div>
+              </div>
+              <h3 className="text-lg font-bold text-green-800 mb-2">Approved Hours</h3>
+              <p className="text-3xl font-bold text-green-600">{approvedHours.toFixed(1)}h</p>
+              <div className="text-sm text-green-600 mt-2">Ready for payroll</div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-3xl">⏳</div>
+                <div className="text-yellow-600 text-sm font-medium">PENDING</div>
+              </div>
+              <h3 className="text-lg font-bold text-yellow-800 mb-2">Pending Hours</h3>
+              <p className="text-3xl font-bold text-yellow-600">{pendingHours.toFixed(1)}h</p>
+              <div className="text-sm text-yellow-600 mt-2">Awaiting approval</div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-3xl">📋</div>
+                <div className="text-blue-600 text-sm font-medium">TOTAL</div>
+              </div>
+              <h3 className="text-lg font-bold text-blue-800 mb-2">Total Records</h3>
+              <p className="text-3xl font-bold text-blue-600">{filteredRecords.length}</p>
+              <div className="text-sm text-blue-600 mt-2">In date range</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Attendance Records Table */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                {isAdmin && !selectedTrainerId && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trainer</th>
-                )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRecords.length === 0 ? (
+      {/* Enhanced Attendance Records */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] p-6">
+          <h2 className="text-2xl font-bold text-white flex items-center">
+            <span className="mr-3">📝</span>
+            Attendance Records
+          </h2>
+        </div>
+        
+        {filteredRecords.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="text-8xl mb-6">📭</div>
+            <h3 className="text-2xl font-bold text-gray-600 mb-4">No Records Found</h3>
+            <p className="text-gray-500 mb-6">No attendance records found in the selected date range.</p>
+            <div className="text-sm text-gray-400">Try adjusting your date range or filters</div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <td colSpan={isAdmin ? (selectedTrainerId ? 7 : 8) : 7} className="px-6 py-4 text-center text-gray-500">
-                    No attendance records found in selected date range
-                  </td>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">📅</span>
+                      Date
+                    </div>
+                  </th>
+                  {(isAdmin || isAdminAssistant) && !selectedTrainerId && (
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      <div className="flex items-center">
+                        <span className="mr-2">👤</span>
+                        Trainer
+                      </div>
+                    </th>
+                  )}
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">⏰</span>
+                      Time
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">⏱️</span>
+                      Hours
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">🏷️</span>
+                      Type
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">📊</span>
+                      Status
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">📝</span>
+                      Notes
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">⚙️</span>
+                      Actions
+                    </div>
+                  </th>
                 </tr>
-              ) : (
-                filteredRecords.map((record) => (
-                  <tr key={record.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.date}</td>
-                    {isAdmin && !selectedTrainerId && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {trainerNames[record.trainerId] || 'Loading...'}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {filteredRecords.map((record, index) => (
+                  <tr 
+                    key={record.id} 
+                    className="hover:bg-gradient-to-r hover:from-[#fedac2] hover:to-[#fdbc94] transition-all duration-200 group"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-gray-900">
+                        {new Date(record.date).toLocaleDateString('en-US', { 
+                          weekday: 'short', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </div>
+                      <div className="text-xs text-gray-500">{record.date}</div>
+                    </td>
+                    {(isAdmin || isAdminAssistant) && !selectedTrainerId && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-[#fc5d01] rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
+                            {(trainerNames[record.trainerId] || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {trainerNames[record.trainerId] || 'Loading...'}
+                          </div>
+                        </div>
                       </td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {record.startTime} - {record.endTime}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {record.totalHours.toFixed(2)}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-gray-900">
+                        {record.startTime} - {record.endTime || 'In progress'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {record.endTime ? 'Completed' : 'Ongoing'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                        ${record.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                          record.status === 'rejected' ? 'bg-red-100 text-red-800' : 
-                          'bg-yellow-100 text-yellow-800'}`}>
-                        {record.status}
+                      <div className="text-lg font-bold text-[#fc5d01]">
+                        {record.totalHours.toFixed(1)}h
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full border-2 ${
+                        record.isBackfill 
+                          ? 'bg-orange-50 text-orange-800 border-orange-200' 
+                          : 'bg-blue-50 text-blue-800 border-blue-200'
+                      }`}>
+                        {record.isBackfill ? '🔄 Backfill' : '✓ Regular'}
+                      </span>
+                      {record.isBackfill && record.backfillReason && (
+                        <div className="text-xs text-gray-500 mt-1 max-w-xs" title={record.backfillReason}>
+                          <span className="font-medium">Reason:</span> {record.backfillReason.length > 25 ? record.backfillReason.substring(0, 25) + '...' : record.backfillReason}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full border-2 ${
+                        record.status === 'approved' ? 'bg-green-50 text-green-800 border-green-200' : 
+                        record.status === 'rejected' ? 'bg-red-50 text-red-800 border-red-200' : 
+                        'bg-yellow-50 text-yellow-800 border-yellow-200'
+                      }`}>
+                        {record.status === 'approved' ? '✅ Approved' :
+                         record.status === 'rejected' ? '❌ Rejected' :
+                         '⏳ Pending'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{record.notes || '-'}</td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs">
+                        {record.notes ? (
+                          <div className="truncate" title={record.notes}>
+                            {record.notes}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">No notes</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="space-x-2">
+                      <div className="flex space-x-2">
                         {isAdmin && record.status === 'pending' && (
                           <>
                             <button
                               onClick={() => handleStatusUpdate(record.id, 'approved')}
-                              className="text-green-600 hover:text-green-900"
+                              className="bg-green-100 text-green-700 px-3 py-1 rounded-lg hover:bg-green-200 transition-colors font-medium"
                             >
-                              Approve
+                              ✅ Approve
                             </button>
                             <button
                               onClick={() => handleStatusUpdate(record.id, 'rejected')}
-                              className="text-red-600 hover:text-red-900"
+                              className="bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200 transition-colors font-medium"
                             >
-                              Reject
+                              ❌ Reject
                             </button>
                           </>
                         )}
@@ -432,26 +651,26 @@ export default function AttendanceList() {
                           <>
                             <button
                               onClick={() => handleEdit(record)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 transition-colors font-medium"
                             >
-                              Edit
+                              ✏️ Edit
                             </button>
                             <button
                               onClick={() => handleDelete(record.id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200 transition-colors font-medium"
                             >
-                              Delete
+                              🗑️ Delete
                             </button>
                           </>
                         )}
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}
