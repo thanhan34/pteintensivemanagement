@@ -2,138 +2,41 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Task, Project, CreateProjectData } from '../types/task';
+import { Task, Project, Label, TaskFilter, TaskStatus } from '../types/task';
 import { taskService, projectService } from '../utils/taskService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
   Search, 
   CheckCircle2, 
   AlertTriangle,
-  Users
+  Clock,
+  Circle,
+  LayoutGrid,
+  List,
+  Filter,
+  Calendar
 } from 'lucide-react';
-
-// Project Form Component
-interface ProjectFormProps {
-  onSuccess: () => void;
-  onCancel: () => void;
-}
-
-function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
-  const { data: session } = useSession();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateProjectData>({
-    name: '',
-    description: '',
-    color: '#fc5d01',
-    members: []
-  });
-
-  const PROJECT_COLORS = [
-    '#fc5d01', // Orange primary
-    '#fd7f33', // Orange rực
-    '#ffac7b', // Orange sáng
-    '#fdbc94', // Orange nhạt trung bình
-    '#fedac2', // Orange nhạt rất nhẹ
-    '#3b82f6', // Blue
-    '#10b981', // Green
-    '#f59e0b', // Yellow
-    '#ef4444', // Red
-    '#8b5cf6', // Purple
-    '#06b6d4', // Cyan
-    '#84cc16', // Lime
-  ];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!session?.user?.id) return;
-
-    setLoading(true);
-    try {
-      await projectService.createProject(formData, session.user.id);
-      onSuccess();
-    } catch (error) {
-      console.error('Error creating project:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Project Name */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Project Name *</label>
-        <Input
-          value={formData.name}
-          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          placeholder="Enter project name..."
-          required
-        />
-      </div>
-
-      {/* Description */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Description</label>
-        <Input
-          value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Project description..."
-        />
-      </div>
-
-      {/* Color Selection */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Project Color</label>
-        <div className="flex flex-wrap gap-2">
-          {PROJECT_COLORS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              className={`w-8 h-8 rounded-full border-2 transition-all ${
-                formData.color === color ? "border-gray-400 scale-110" : "border-gray-200 hover:scale-105"
-              }`}
-              style={{ backgroundColor: color }}
-              onClick={() => setFormData(prev => ({ ...prev, color }))}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Form Actions */}
-      <div className="flex justify-end gap-3 pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={loading}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={loading || !formData.name.trim()}
-          className="bg-primary hover:bg-primary/90"
-        >
-          {loading ? 'Creating...' : 'Create Project'}
-        </Button>
-      </div>
-    </form>
-  );
-}
+import KanbanBoard from '../components/KanbanBoard';
+import TaskForm from '../components/TaskForm';
+import FilterPanel from '../components/FilterPanel';
+import { cn } from '@/lib/utils';
 
 export default function TasksPage() {
   const { data: session } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [filter, setFilter] = useState<TaskFilter>({});
 
   // Load initial data
   useEffect(() => {
@@ -147,6 +50,15 @@ export default function TasksPage() {
         
         setTasks(tasksData);
         setProjects(projectsData);
+        
+        // Mock labels for now - in real app, load from service
+        setLabels([
+          { id: '1', name: 'Bug', color: '#ef4444', createdBy: '', createdAt: new Date() },
+          { id: '2', name: 'Feature', color: '#3b82f6', createdBy: '', createdAt: new Date() },
+          { id: '3', name: 'Enhancement', color: '#10b981', createdBy: '', createdAt: new Date() },
+          { id: '4', name: 'Documentation', color: '#f59e0b', createdBy: '', createdAt: new Date() },
+          { id: '5', name: 'Testing', color: '#8b5cf6', createdBy: '', createdAt: new Date() }
+        ]);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -159,28 +71,241 @@ export default function TasksPage() {
     }
   }, [session]);
 
-  // Filter projects based on search term
-  const filteredProjects = projects.filter(project => 
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and search tasks
+  const filteredTasks = tasks.filter(task => {
+    // Search filter
+    if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
+        !task.description.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+
+    // Status filter
+    if (filter.status?.length && !filter.status.includes(task.status)) {
+      return false;
+    }
+
+    // Priority filter
+    if (filter.priority?.length && !filter.priority.includes(task.priority)) {
+      return false;
+    }
+
+    // Project filter
+    if (filter.projectId && filter.projectId !== 'none') {
+      if (task.projectId !== filter.projectId) return false;
+    } else if (filter.projectId === 'none' && task.projectId) {
+      return false;
+    }
+
+    // Labels filter
+    if (filter.labels?.length) {
+      const hasMatchingLabel = filter.labels.some(labelId => task.labels.includes(labelId));
+      if (!hasMatchingLabel) return false;
+    }
+
+    // Date filters
+    const now = new Date();
+    const taskDueDate = new Date(task.dueDate);
+    
+    if (filter.today) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      if (taskDueDate < today || taskDueDate >= tomorrow) return false;
+    }
+
+    if (filter.overdue) {
+      if (task.status === 'done' || taskDueDate >= now) return false;
+    }
+
+    if (filter.next7days) {
+      const next7Days = new Date();
+      next7Days.setDate(next7Days.getDate() + 7);
+      
+      if (taskDueDate < now || taskDueDate > next7Days) return false;
+    }
+
+    if (filter.dueDate) {
+      if (filter.dueDate.from && taskDueDate < filter.dueDate.from) return false;
+      if (filter.dueDate.to && taskDueDate > filter.dueDate.to) return false;
+    }
+
+    return true;
+  });
 
   // Get task counts for different statuses
   const taskCounts = {
-    total: tasks.length,
-    todo: tasks.filter(t => t.status === 'todo').length,
-    inProgress: tasks.filter(t => t.status === 'in_progress').length,
-    done: tasks.filter(t => t.status === 'done').length,
-    overdue: tasks.filter(t => t.status !== 'done' && new Date(t.dueDate) < new Date()).length
+    total: filteredTasks.length,
+    todo: filteredTasks.filter(t => t.status === 'todo').length,
+    inProgress: filteredTasks.filter(t => t.status === 'in_progress').length,
+    done: filteredTasks.filter(t => t.status === 'done').length,
+    overdue: filteredTasks.filter(t => t.status !== 'done' && new Date(t.dueDate) < new Date()).length
   };
 
-  // Handle project creation
-  const handleProjectCreated = async () => {
-    setShowCreateProject(false);
-    // Refresh projects
-    const updatedProjects = await projectService.getProjects();
-    setProjects(updatedProjects);
+  // Handle task status change
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    try {
+      await taskService.updateTask(taskId, { status: newStatus });
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
   };
+
+  // Handle task completion
+  const handleComplete = async (taskId: string) => {
+    await handleStatusChange(taskId, 'done');
+  };
+
+  // Handle task creation
+  const handleTaskCreated = async () => {
+    setShowCreateTask(false);
+    // Refresh tasks
+    const updatedTasks = await taskService.getTasks();
+    setTasks(updatedTasks);
+  };
+
+  // Render task list view
+  const renderTaskList = () => (
+    <div className="space-y-3">
+      {filteredTasks.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">
+                {searchTerm || Object.keys(filter).length > 0 ? 'No tasks found' : 'No tasks yet'}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {searchTerm || Object.keys(filter).length > 0
+                  ? 'Try adjusting your search or filters' 
+                  : 'Create your first task to get started'
+                }
+              </p>
+              <Button onClick={() => setShowCreateTask(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Task
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        filteredTasks.map((task) => {
+          const project = projects.find(p => p.id === task.projectId);
+          const taskLabels = labels.filter(l => task.labels.includes(l.id));
+          const isOverdue = task.status !== 'done' && new Date(task.dueDate) < new Date();
+
+          return (
+            <Card 
+              key={task.id} 
+              className={cn(
+                "transition-all duration-200 hover:shadow-md",
+                task.status === 'done' && "opacity-75",
+                isOverdue && "border-red-200 bg-red-50"
+              )}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    {/* Title and Status */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        {task.status === 'done' ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : task.status === 'in_progress' ? (
+                          <Clock className="h-4 w-4 text-blue-500" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-gray-400" />
+                        )}
+                        <h3 className={cn(
+                          "font-medium",
+                          task.status === 'done' && "line-through text-muted-foreground"
+                        )}>
+                          {task.title}
+                        </h3>
+                      </div>
+                      
+                      {/* Priority indicator */}
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        task.priority === 'urgent' && "bg-red-500",
+                        task.priority === 'high' && "bg-orange-500",
+                        task.priority === 'medium' && "bg-yellow-500",
+                        task.priority === 'low' && "bg-green-500"
+                      )} />
+                    </div>
+
+                    {/* Description */}
+                    {task.description && (
+                      <p className={cn(
+                        "text-sm text-muted-foreground",
+                        task.status === 'done' && "line-through"
+                      )}>
+                        {task.description}
+                      </p>
+                    )}
+
+                    {/* Meta information */}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {/* Due date */}
+                      <div className={cn(
+                        "flex items-center gap-1",
+                        isOverdue && "text-red-600"
+                      )}>
+                        <Calendar className="h-3 w-3" />
+                        <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                        {isOverdue && <AlertTriangle className="h-3 w-3" />}
+                      </div>
+
+                      {/* Project */}
+                      {project && (
+                        <div className="flex items-center gap-1">
+                          <div 
+                            className="w-2 h-2 rounded-full" 
+                            style={{ backgroundColor: project.color }}
+                          />
+                          <span>{project.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Labels */}
+                    {taskLabels.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {taskLabels.map((label) => (
+                          <Badge
+                            key={label.id}
+                            variant="secondary"
+                            className="text-xs"
+                            style={{ 
+                              backgroundColor: label.color + '20', 
+                              color: label.color,
+                              borderColor: label.color + '40'
+                            }}
+                          >
+                            {label.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {task.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -188,7 +313,7 @@ export default function TasksPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading projects...</p>
+            <p className="mt-2 text-muted-foreground">Loading tasks...</p>
           </div>
         </div>
       </div>
@@ -200,28 +325,30 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Project Management</h1>
-          <p className="text-muted-foreground">Organize your work into projects and manage tasks efficiently</p>
+          <h1 className="text-3xl font-bold text-foreground">Task Management</h1>
+          <p className="text-muted-foreground">Organize and track your tasks efficiently</p>
         </div>
         
         <div className="flex gap-2">
-          <Dialog open={showCreateProject} onOpenChange={setShowCreateProject}>
+          <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
-                New Project
+                New Task
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Project</DialogTitle>
+                <DialogTitle>Create New Task</DialogTitle>
                 <DialogDescription>
-                  Create a new project to organize your tasks
+                  Add a new task to your workflow
                 </DialogDescription>
               </DialogHeader>
-              <ProjectForm 
-                onSuccess={handleProjectCreated}
-                onCancel={() => setShowCreateProject(false)}
+              <TaskForm 
+                projects={projects}
+                labels={labels}
+                onSuccess={handleTaskCreated}
+                onCancel={() => setShowCreateTask(false)}
               />
             </DialogContent>
           </Dialog>
@@ -232,21 +359,31 @@ export default function TasksPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+            <Circle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{projects.length}</div>
+            <div className="text-2xl font-bold">{taskCounts.total}</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">To Do</CardTitle>
+            <Circle className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{taskCounts.total}</div>
+            <div className="text-2xl font-bold">{taskCounts.todo}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{taskCounts.inProgress}</div>
           </CardContent>
         </Card>
         
@@ -259,117 +396,66 @@ export default function TasksPage() {
             <div className="text-2xl font-bold text-green-600">{taskCounts.done}</div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">{taskCounts.overdue}</div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search projects..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Projects Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Your Projects</h2>
-          <Badge variant="secondary">{filteredProjects.length}</Badge>
+      {/* Search and View Controls */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search tasks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
         
-        {filteredProjects.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">
-                  {searchTerm ? 'No projects found' : 'No projects yet'}
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchTerm 
-                    ? 'Try adjusting your search terms' 
-                    : 'Create your first project to organize your tasks'
-                  }
-                </p>
-                <Button onClick={() => setShowCreateProject(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Project
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProjects.map((project) => {
-              const projectTasks = tasks.filter(task => task.projectId === project.id);
-              const completedTasks = projectTasks.filter(task => task.status === 'done').length;
-              const progress = projectTasks.length > 0 ? (completedTasks / projectTasks.length) * 100 : 0;
-              
-              return (
-                <Card 
-                  key={project.id} 
-                  className="cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
-                  onClick={() => window.location.href = `/projects/${project.id}`}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-4 h-4 rounded-full flex-shrink-0" 
-                        style={{ backgroundColor: project.color }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground truncate">{project.name}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {project.description || 'No description'}
-                        </p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      {/* Progress */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Progress</span>
-                          <span className="font-medium">{Math.round(progress)}%</span>
-                        </div>
-                        <Progress value={progress} className="h-2" />
-                      </div>
-                      
-                      {/* Task counts */}
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          {projectTasks.length} task{projectTasks.length !== 1 ? 's' : ''}
-                        </span>
-                        <span className="text-green-600">
-                          {completedTasks} completed
-                        </span>
-                      </div>
-                      
-                      {/* Members */}
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-3 w-3" />
-                        <span>{project.members.length + 1} member{project.members.length !== 0 ? 's' : ''}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'kanban' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('kanban')}
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Kanban
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="h-4 w-4 mr-2" />
+            List
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Filter Panel */}
+        <div className="lg:col-span-1">
+          <FilterPanel
+            filter={filter}
+            onFilterChange={setFilter}
+            projects={projects}
+            labels={labels}
+          />
+        </div>
+
+        {/* Tasks Content */}
+        <div className="lg:col-span-3">
+          {viewMode === 'kanban' ? (
+            <KanbanBoard
+              tasks={filteredTasks}
+              projects={projects}
+              labels={labels}
+              onStatusChange={handleStatusChange}
+              onComplete={handleComplete}
+            />
+          ) : (
+            renderTaskList()
+          )}
+        </div>
       </div>
     </div>
   );
