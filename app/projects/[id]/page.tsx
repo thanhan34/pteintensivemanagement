@@ -19,6 +19,8 @@ import {
   Users, 
   UserPlus,
   Settings,
+  CheckCircle2,
+  Target
 } from 'lucide-react';
 import TaskForm from '../../components/TaskForm';
 import TaskCard from '../../components/TaskCard';
@@ -199,7 +201,7 @@ export default function ProjectDetailPage() {
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Tasks
+          Back to Project Hub
         </Button>
       </div>
 
@@ -253,24 +255,31 @@ export default function ProjectDetailPage() {
           </Card>
         </div>
 
-        {/* Project Members */}
+        {/* Project Members - Enhanced */}
         <div className="lg:w-80">
-          <Card>
+          <Card className="border-2 border-dashed border-primary/20 bg-primary/5">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Team Members</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-primary">Team Collaboration</CardTitle>
+                </div>
                 {(isOwner || isMember) && (
                   <Dialog open={showInviteMembers} onOpenChange={setShowInviteMembers}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <UserPlus className="h-4 w-4" />
+                      <Button className="bg-primary hover:bg-primary/90" size="sm">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite Member
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-md">
                       <DialogHeader>
-                        <DialogTitle>Invite Team Member</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                          <UserPlus className="h-5 w-5 text-primary" />
+                          Invite Team Member
+                        </DialogTitle>
                         <DialogDescription>
-                          Invite someone to collaborate on this project
+                          Invite someone to collaborate on <strong>{project.name}</strong>
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
@@ -281,31 +290,35 @@ export default function ProjectDetailPage() {
                             placeholder="Search by name or email..."
                             value={searchUsers}
                             onChange={(e) => setSearchUsers(e.target.value)}
+                            className="border-primary/20 focus:border-primary"
                           />
                         </div>
 
                         {/* Users List */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Select User to Invite</label>
-                          <div className="max-h-60 overflow-y-auto border rounded-md">
+                          <div className="max-h-60 overflow-y-auto border rounded-md border-primary/20">
                             {filteredUsers.length === 0 ? (
-                              <div className="p-4 text-center text-muted-foreground">
-                                {searchUsers ? 'No users found' : 'No available users to invite'}
+                              <div className="p-6 text-center text-muted-foreground">
+                                <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <div className="text-sm">
+                                  {searchUsers ? 'No users found' : 'No available users to invite'}
+                                </div>
                               </div>
                             ) : (
                               <div className="space-y-1 p-2">
                                 {filteredUsers.map((user) => (
                                   <div
                                     key={user.id}
-                                    className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${
+                                    className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all ${
                                       selectedUserId === user.id 
-                                        ? 'bg-primary/10 border border-primary' 
-                                        : 'hover:bg-muted'
+                                        ? 'bg-primary/10 border border-primary shadow-sm' 
+                                        : 'hover:bg-muted hover:shadow-sm'
                                     }`}
                                     onClick={() => setSelectedUserId(user.id)}
                                   >
-                                    <Avatar className="h-8 w-8">
-                                      <AvatarFallback>
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                                         {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
                                       </AvatarFallback>
                                     </Avatar>
@@ -322,6 +335,9 @@ export default function ProjectDetailPage() {
                                         </Badge>
                                       )}
                                     </div>
+                                    {selectedUserId === user.id && (
+                                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -329,7 +345,7 @@ export default function ProjectDetailPage() {
                           </div>
                         </div>
 
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 pt-2">
                           <Button
                             variant="outline"
                             onClick={() => {
@@ -343,9 +359,10 @@ export default function ProjectDetailPage() {
                           <Button
                             onClick={handleInviteMember}
                             disabled={!selectedUserId}
+                            className="bg-primary hover:bg-primary/90"
                           >
                             <UserPlus className="h-4 w-4 mr-2" />
-                            Invite User
+                            Send Invitation
                           </Button>
                         </div>
                       </div>
@@ -353,35 +370,41 @@ export default function ProjectDetailPage() {
                   </Dialog>
                 )}
               </div>
+              <p className="text-sm text-muted-foreground">
+                Collaborate with your team members on this project
+              </p>
             </CardHeader>
             
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* Project Owner */}
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
+                <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-primary text-white font-semibold">
                       {session?.user?.name?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <div className="text-sm font-medium">
-                      {isOwner ? 'You' : 'Project Owner'}
+                    <div className="text-sm font-semibold">
+                      {isOwner ? 'You (Project Owner)' : 'Project Owner'}
                     </div>
-                    <Badge variant="default" className="text-xs">Owner</Badge>
+                    <div className="text-xs text-muted-foreground">
+                      {session?.user?.email}
+                    </div>
                   </div>
+                  <Badge variant="default" className="bg-primary text-xs">Owner</Badge>
                 </div>
 
                 {/* Members */}
-                {project.members.length > 0 && (
-                  <>
-                    <Separator />
+                {project.members.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">Team Members</div>
                     {project.members.map((memberId) => {
                       const memberUser = users.find(u => u.id === memberId);
                       return (
-                        <div key={memberId} className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>
+                        <div key={memberId} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <Avatar className="h-9 w-9">
+                            <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold">
                               {memberUser?.name?.charAt(0) || memberUser?.email?.charAt(0) || 'M'}
                             </AvatarFallback>
                           </Avatar>
@@ -389,25 +412,40 @@ export default function ProjectDetailPage() {
                             <div className="text-sm font-medium">
                               {memberUser?.name || memberUser?.email || 'Unknown User'}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-xs">Member</Badge>
-                              {memberUser?.role && (
-                                <Badge variant="outline" className="text-xs">
-                                  {memberUser.role}
-                                </Badge>
-                              )}
+                            <div className="text-xs text-muted-foreground">
+                              {memberUser?.email}
                             </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="secondary" className="text-xs">Member</Badge>
+                            {memberUser?.role && (
+                              <Badge variant="outline" className="text-xs">
+                                {memberUser.role}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       );
                     })}
-                  </>
-                )}
-
-                {project.members.length === 0 && (
-                  <div className="text-center py-4">
-                    <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No team members yet</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 border-2 border-dashed border-muted-foreground/20 rounded-lg">
+                    <UserPlus className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                    <p className="text-sm font-medium text-muted-foreground mb-1">No team members yet</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Invite team members to collaborate on this project
+                    </p>
+                    {(isOwner || isMember) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowInviteMembers(true)}
+                        className="border-primary/20 text-primary hover:bg-primary/5"
+                      >
+                        <UserPlus className="h-3 w-3 mr-2" />
+                        Invite First Member
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -416,36 +454,51 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold">Project Tasks</h2>
-          <Badge variant="secondary">{taskCounts.total}</Badge>
+      {/* Action Buttons - Enhanced */}
+      <div className="bg-gradient-to-r from-primary/5 to-blue-50 p-6 rounded-lg border border-primary/20">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Target className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">Project Tasks</h2>
+              <p className="text-sm text-muted-foreground">
+                Manage and track tasks for {project.name}
+              </p>
+            </div>
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
+              {taskCounts.total} tasks
+            </Badge>
+          </div>
+          
+          <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90 shadow-md" size="lg">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Task
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-primary" />
+                  Create Task for {project.name}
+                </DialogTitle>
+                <DialogDescription>
+                  Add a new task to this project and assign it to team members
+                </DialogDescription>
+              </DialogHeader>
+              <TaskForm 
+                projects={[project]}
+                labels={labels}
+                onSuccess={handleTaskCreated}
+                onCancel={() => setShowCreateTask(false)}
+                initialData={{ projectId: project.id }}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
-        
-        <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create Task for {project.name}</DialogTitle>
-              <DialogDescription>
-                Add a new task to this project
-              </DialogDescription>
-            </DialogHeader>
-            <TaskForm 
-              projects={[project]}
-              labels={labels}
-              onSuccess={handleTaskCreated}
-              onCancel={() => setShowCreateTask(false)}
-              initialData={{ projectId: project.id }}
-            />
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Tasks View */}

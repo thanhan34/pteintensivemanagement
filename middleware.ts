@@ -34,17 +34,17 @@ export default withAuth(
       return NextResponse.next();
     }
 
-    // Trainer can only access attendance
+    // Trainer can access attendance and tasks
     if (role === 'trainer') {
-      if (path.startsWith('/attendance')) {
+      if (path.startsWith('/attendance') || path.startsWith('/tasks') || path.startsWith('/projects')) {
         return NextResponse.next();
       }
       return NextResponse.redirect(new URL('/attendance', req.url));
     }
 
-    // Administrative assistant can only access students page
+    // Administrative assistant can access students and tasks
     if (role === 'administrative_assistant') {
-      if (path.startsWith('/students')) {
+      if (path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects')) {
         return NextResponse.next();
       }
       return NextResponse.redirect(new URL('/students', req.url));

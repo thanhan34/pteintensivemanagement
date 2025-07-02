@@ -376,7 +376,7 @@ export const projectService = {
   },
 
   // Invite member to project
-  async inviteMember(projectId: string, email: string): Promise<void> {
+  async inviteMember(projectId: string, userId: string): Promise<void> {
     try {
       const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
       const projectDoc = await getDoc(projectRef);
@@ -385,10 +385,10 @@ export const projectService = {
         const projectData = projectDoc.data() as Project;
         const currentMembers = projectData.members || [];
         
-        // Add email to members if not already present
-        if (!currentMembers.includes(email)) {
+        // Add userId to members if not already present
+        if (!currentMembers.includes(userId)) {
           await updateDoc(projectRef, {
-            members: [...currentMembers, email],
+            members: [...currentMembers, userId],
             updatedAt: dateToTimestamp(new Date())
           });
         }

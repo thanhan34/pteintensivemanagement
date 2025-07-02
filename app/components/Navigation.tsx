@@ -28,7 +28,7 @@ export default function Navigation() {
               href="/tasks"
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
-              Tasks
+              Projects
             </Link>
             <Link
               href="/attendance"
@@ -75,7 +75,7 @@ export default function Navigation() {
               href="/tasks"
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
-              Tasks
+              Projects
             </Link>
             <Link
               href="/attendance"
@@ -98,7 +98,7 @@ export default function Navigation() {
               href="/tasks"
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
-              Tasks
+              Projects
             </Link>
           </>
         );
@@ -169,7 +169,7 @@ export default function Navigation() {
                   className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Tasks
+                  Projects
                 </Link>
                 <Link
                   href="/attendance"
@@ -222,7 +222,7 @@ export default function Navigation() {
                   className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Tasks
+                  Projects
                 </Link>
                 <Link
                   href="/attendance"
@@ -247,7 +247,7 @@ export default function Navigation() {
                   className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Tasks
+                  Projects
                 </Link>
               </>
             )}
