@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
   Search, 
@@ -19,7 +18,6 @@ import {
   Circle,
   LayoutGrid,
   List,
-  Filter,
   Calendar
 } from 'lucide-react';
 import KanbanBoard from '../components/KanbanBoard';
