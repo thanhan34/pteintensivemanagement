@@ -425,7 +425,7 @@ export default function TrainerDashboard() {
         <div className="bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] p-6">
           <h3 className="text-2xl font-bold text-white flex items-center">
             <span className="mr-3">📊</span>
-            Today's Performance
+            Today&apos;s Performance
           </h3>
         </div>
         <div className="p-6">
@@ -540,7 +540,7 @@ export default function TrainerDashboard() {
         </div>
         <div className="text-gray-600">
           {isCheckedIn 
-            ? `You've been working for ${getTodayHours().toFixed(1)} hours today` 
+            ? `You&apos;ve been working for ${getTodayHours().toFixed(1)} hours today`
             : 'Click Check In to start tracking your time'}
         </div>
       </div>

@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import AttendanceForm from '../components/AttendanceForm';
 import AttendanceList from '../components/AttendanceList';
 import TrainerDashboard from '../components/TrainerDashboard';
 import BackfillForm from '../components/BackfillForm';

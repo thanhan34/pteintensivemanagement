@@ -72,7 +72,7 @@ export default function AttendanceList() {
       setError('Failed to setup trainers listener');
       return undefined;
     }
-  }, [isAdmin]);
+  }, [isAdmin, isAdminAssistant]);
 
   const setupAttendanceListener = useCallback(() => {
     if (!session?.user?.id) return;
@@ -116,7 +116,7 @@ export default function AttendanceList() {
       setLoading(false);
       return undefined;
     }
-  }, [session?.user?.id, isAdmin, selectedTrainerId]);
+  }, [session?.user?.id, isAdmin, isAdminAssistant, selectedTrainerId]);
 
   useEffect(() => {
     if (mounted && session?.user?.id) {

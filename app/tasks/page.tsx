@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label as UILabel } from '@/components/ui/label';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Plus, 
   Search, 
@@ -21,9 +20,7 @@ import {
   Calendar,
   ArrowRight,
   Target,
-  CheckCircle2,
-  Edit,
-  Trash2
+  CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
