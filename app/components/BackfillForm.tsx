@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '../config/firebase';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
-import { User } from '../types/roles';
+import { User, AttendanceRecord } from '../types/roles';
 
 export default function BackfillForm() {
   const { data: session } = useSession();
@@ -43,6 +43,27 @@ export default function BackfillForm() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const minDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+  const getNextSessionNumber = async (trainerId: string, targetDate: string) => {
+    try {
+      const attendanceRef = collection(db, 'attendance');
+      const q = query(
+        attendanceRef,
+        where('trainerId', '==', trainerId),
+        where('date', '==', targetDate)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const records = querySnapshot.docs.map(doc => doc.data()) as AttendanceRecord[];
+      
+      if (records.length === 0) return 1;
+      const maxSession = Math.max(...records.map(record => record.sessionNumber || 1));
+      return maxSession + 1;
+    } catch (error) {
+      console.error('Error getting session number:', error);
+      return 1; // Default to session 1 if there's an error
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +109,9 @@ export default function BackfillForm() {
         throw new Error('End time must be after start time');
       }
 
+      // Get the next session number for this trainer and date
+      const sessionNumber = await getNextSessionNumber(selectedTrainerId, date);
+
       // Prepare the final activity text
       const finalActivity = activityType === 'Others' ? customActivity.trim() : activityType;
       const finalNotes = notes.trim() ? `Activity: ${finalActivity}\nNotes: ${notes.trim()}` : `Activity: ${finalActivity}`;
@@ -104,6 +128,7 @@ export default function BackfillForm() {
         createdBy: session.user.id,
         isBackfill: true,
         backfillReason: backfillReason.trim(),
+        sessionNumber: sessionNumber,
         createdAt: serverTimestamp(),
       };
 

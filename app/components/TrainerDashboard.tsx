@@ -8,26 +8,36 @@ import { AttendanceRecord } from '../types/roles';
 
 export default function TrainerDashboard() {
   const { data: session } = useSession();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
+  const [todayRecords, setTodayRecords] = useState<AttendanceRecord[]>([]);
+  const [currentSession, setCurrentSession] = useState<AttendanceRecord | null>(null);
   const [recentRecords, setRecentRecords] = useState<AttendanceRecord[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNotesInput, setShowNotesInput] = useState(false);
   const [activityType, setActivityType] = useState('');
   const [customActivity, setCustomActivity] = useState('');
+  const [isClient, setIsClient] = useState(false);
+
+  // Initialize client-side rendering
+  useEffect(() => {
+    setIsClient(true);
+    setCurrentTime(new Date());
+  }, []);
 
   // Update current time every second
   useEffect(() => {
+    if (!isClient) return;
+    
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [isClient]);
 
-  // Listen to today's attendance record
+  // Listen to today's attendance records
   useEffect(() => {
     if (!session?.user?.id) return;
 
@@ -36,7 +46,8 @@ export default function TrainerDashboard() {
     const q = query(
       attendanceRef,
       where('trainerId', '==', session.user.id),
-      where('date', '==', today)
+      where('date', '==', today),
+      orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -45,14 +56,14 @@ export default function TrainerDashboard() {
         ...doc.data()
       })) as AttendanceRecord[];
 
-      if (records.length > 0) {
-        const record = records[0];
-        setTodayRecord(record);
-        setIsCheckedIn(!!record.startTime && (!record.endTime || record.endTime === ''));
-      } else {
-        setTodayRecord(null);
-        setIsCheckedIn(false);
-      }
+      setTodayRecords(records);
+
+      // Find current active session (checked in but not checked out)
+      // Get the most recent session that hasn't been ended yet
+      const activeSessions = records.filter(record => record.startTime && (!record.endTime || record.endTime === ''));
+      const activeSession = activeSessions.length > 0 ? activeSessions[0] : null; // records are already ordered by createdAt desc
+      setCurrentSession(activeSession || null);
+      setIsCheckedIn(!!activeSession);
     });
 
     return () => unsubscribe();
@@ -67,7 +78,8 @@ export default function TrainerDashboard() {
       attendanceRef,
       where('trainerId', '==', session.user.id),
       orderBy('date', 'desc'),
-      limit(5)
+      orderBy('createdAt', 'desc'),
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -82,8 +94,23 @@ export default function TrainerDashboard() {
     return () => unsubscribe();
   }, [session?.user?.id]);
 
+  const getNextSessionNumber = () => {
+    if (todayRecords.length === 0) return 1;
+    // Only count sessions that have been properly created (have sessionNumber)
+    const validSessions = todayRecords.filter(record => record.sessionNumber);
+    if (validSessions.length === 0) return 1;
+    const maxSession = Math.max(...validSessions.map(record => record.sessionNumber || 1));
+    return maxSession + 1;
+  };
+
   const handleCheckIn = async () => {
     if (!session?.user?.id) return;
+
+    // Double check to prevent multiple active sessions
+    if (isCheckedIn || currentSession) {
+      setError('You already have an active session. Please end it first.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -92,6 +119,7 @@ export default function TrainerDashboard() {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const currentTime = now.toLocaleTimeString('en-US', { hour12: false }).slice(0, 5);
+      const sessionNumber = getNextSessionNumber();
 
       const attendanceData = {
         trainerId: session.user.id,
@@ -103,6 +131,7 @@ export default function TrainerDashboard() {
         notes: '',
         createdBy: session.user.id,
         isBackfill: false,
+        sessionNumber: sessionNumber,
         createdAt: serverTimestamp(),
       };
 
@@ -116,7 +145,7 @@ export default function TrainerDashboard() {
   };
 
   const handleCheckOut = async () => {
-    if (!session?.user?.id || !todayRecord) return;
+    if (!session?.user?.id || !currentSession) return;
 
     // Validate required fields
     if (!activityType) {
@@ -136,15 +165,15 @@ export default function TrainerDashboard() {
       const now = new Date();
       const currentTime = now.toLocaleTimeString('en-US', { hour12: false }).slice(0, 5);
       
-      const startDateTime = new Date(`${todayRecord.date} ${todayRecord.startTime}`);
-      const endDateTime = new Date(`${todayRecord.date} ${currentTime}`);
+      const startDateTime = new Date(`${currentSession.date} ${currentSession.startTime}`);
+      const endDateTime = new Date(`${currentSession.date} ${currentTime}`);
       const totalHours = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60);
 
       // Prepare the final activity text
       const finalActivity = activityType === 'Others' ? customActivity.trim() : activityType;
 
       const { updateDoc, doc } = await import('firebase/firestore');
-      const attendanceRef = doc(db, 'attendance', todayRecord.id);
+      const attendanceRef = doc(db, 'attendance', currentSession.id);
       
       await updateDoc(attendanceRef, {
         endTime: currentTime,
@@ -166,7 +195,7 @@ export default function TrainerDashboard() {
   };
 
   const handleUpdateNotes = async () => {
-    if (!session?.user?.id || !todayRecord) return;
+    if (!session?.user?.id || !currentSession) return;
 
     // Validate required fields
     if (!activityType) {
@@ -184,7 +213,7 @@ export default function TrainerDashboard() {
 
     try {
       const { updateDoc, doc } = await import('firebase/firestore');
-      const attendanceRef = doc(db, 'attendance', todayRecord.id);
+      const attendanceRef = doc(db, 'attendance', currentSession.id);
       
       // Prepare the final activity text
       const finalActivity = activityType === 'Others' ? customActivity.trim() : activityType;
@@ -231,20 +260,31 @@ export default function TrainerDashboard() {
   };
 
   const getTodayStatus = () => {
-    if (!todayRecord) return 'Not started';
+    if (todayRecords.length === 0) return 'Not started';
     if (isCheckedIn) return 'In Progress';
-    if (todayRecord.endTime) return 'Completed';
-    return 'Checked In';
+    return 'Completed sessions';
   };
 
-  const getTodayHours = () => {
-    if (!todayRecord) return 0;
-    if (!todayRecord.endTime && todayRecord.startTime) {
-      const now = new Date();
-      const startDateTime = new Date(`${todayRecord.date} ${todayRecord.startTime}`);
-      return (now.getTime() - startDateTime.getTime()) / (1000 * 60 * 60);
-    }
-    return todayRecord.totalHours || 0;
+  const getTodayTotalHours = () => {
+    if (todayRecords.length === 0) return 0;
+    
+    let totalHours = 0;
+    todayRecords.forEach(record => {
+      if (record.endTime && record.endTime !== '') {
+        totalHours += record.totalHours || 0;
+      } else if (record.startTime && isCheckedIn && record.id === currentSession?.id) {
+        // Calculate current session hours
+        const now = new Date();
+        const startDateTime = new Date(`${record.date} ${record.startTime}`);
+        totalHours += (now.getTime() - startDateTime.getTime()) / (1000 * 60 * 60);
+      }
+    });
+    
+    return totalHours;
+  };
+
+  const getCompletedSessions = () => {
+    return todayRecords.filter(record => record.endTime && record.endTime !== '').length;
   };
 
   return (
@@ -273,13 +313,13 @@ export default function TrainerDashboard() {
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
         <div className="relative p-8 text-center">
           <div className="text-5xl md:text-6xl font-bold mb-3 tracking-tight">
-            {formatTime(currentTime)}
+            {currentTime ? formatTime(currentTime) : '--:--:--'}
           </div>
           <div className="text-xl opacity-95 font-medium">
-            {formatDate(currentTime)}
+            {currentTime ? formatDate(currentTime) : 'Loading...'}
           </div>
           <div className="mt-4 text-sm opacity-80">
-            {isCheckedIn ? '🟢 Currently working' : '⏸️ Not checked in'}
+            {isCheckedIn ? `🟢 Session ${currentSession?.sessionNumber || 1} in progress` : '⏸️ Ready for next session'}
           </div>
         </div>
       </div>
@@ -289,9 +329,9 @@ export default function TrainerDashboard() {
         <div className="relative group">
           <button
             onClick={handleCheckIn}
-            disabled={submitting || isCheckedIn || (todayRecord ? !!todayRecord.endTime : false)}
+            disabled={submitting || isCheckedIn}
             className={`w-full p-8 rounded-2xl font-bold text-xl transition-all duration-300 transform ${
-              isCheckedIn || (todayRecord && todayRecord.endTime)
+              isCheckedIn
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 hover:scale-105 shadow-lg hover:shadow-2xl active:scale-95'
             }`}
@@ -300,13 +340,16 @@ export default function TrainerDashboard() {
               <div className="text-4xl">
                 {submitting ? '⏳' : '🚀'}
               </div>
-              <span className="text-2xl">CHECK IN</span>
+              <span className="text-2xl">
+                {todayRecords.length === 0 ? 'CHECK IN' : `START SESSION ${getNextSessionNumber()}`}
+              </span>
               <div className="text-sm opacity-90 font-normal">
-                {submitting ? 'Processing...' : 'Start your productive day'}
+                {submitting ? 'Processing...' : 
+                 todayRecords.length === 0 ? 'Start your productive day' : 'Begin a new work session'}
               </div>
             </div>
           </button>
-          {!isCheckedIn && !todayRecord?.endTime && (
+          {!isCheckedIn && (
             <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full animate-pulse"></div>
           )}
         </div>
@@ -325,9 +368,11 @@ export default function TrainerDashboard() {
               <div className="text-4xl">
                 {submitting ? '⏳' : '🏁'}
               </div>
-              <span className="text-2xl">CHECK OUT</span>
+              <span className="text-2xl">
+                {currentSession ? `END SESSION ${currentSession.sessionNumber}` : 'CHECK OUT'}
+              </span>
               <div className="text-sm opacity-90 font-normal">
-                {submitting ? 'Processing...' : 'Complete your day'}
+                {submitting ? 'Processing...' : 'Complete current session'}
               </div>
             </div>
           </button>
@@ -338,12 +383,12 @@ export default function TrainerDashboard() {
       </div>
 
       {/* Notes Section */}
-      {(showNotesInput || isCheckedIn) && (
+      {isCheckedIn && (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] p-6">
             <h3 className="text-2xl font-bold text-white flex items-center">
               <span className="mr-3">📝</span>
-              Add Notes for Today
+              Add Notes for Current Session
             </h3>
           </div>
           <div className="p-6">
@@ -386,27 +431,28 @@ export default function TrainerDashboard() {
                 </div>
               )}
               
-              {showNotesInput && (
+              {showNotesInput ? (
                 <div className="flex space-x-3">
                   <button
                     onClick={handleCheckOut}
                     disabled={submitting}
                     className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 hover:from-red-600 hover:to-red-700 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {submitting ? '⏳ Processing...' : '🏁 Check Out Now'}
+                    {submitting ? '⏳ Processing...' : '🏁 End Session Now'}
                   </button>
                   <button
                     onClick={() => {
                       setShowNotesInput(false);
+                      setActivityType('');
+                      setCustomActivity('');
+                      setError(null);
                     }}
                     className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
-              )}
-              
-              {isCheckedIn && !showNotesInput && (
+              ) : (
                 <button
                   onClick={() => handleUpdateNotes()}
                   disabled={submitting}
@@ -429,11 +475,11 @@ export default function TrainerDashboard() {
           </h3>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center p-6 bg-gradient-to-br from-[#fedac2] to-[#fdbc94] rounded-xl shadow-md hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-2">⏰</div>
               <div className="text-3xl font-bold text-[#fc5d01] mb-1">
-                {getTodayHours().toFixed(1)}h
+                {getTodayTotalHours().toFixed(1)}h
               </div>
               <div className="text-sm text-gray-600 font-medium">Total Hours</div>
               <div className="mt-2 text-xs text-gray-500">
@@ -444,30 +490,107 @@ export default function TrainerDashboard() {
             <div className="text-center p-6 bg-gradient-to-br from-[#fdbc94] to-[#ffac7b] rounded-xl shadow-md hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-2">
                 {getTodayStatus() === 'In Progress' ? '🔥' : 
-                 getTodayStatus() === 'Completed' ? '✅' : '💤'}
+                 getTodayStatus() === 'Completed sessions' ? '✅' : '💤'}
               </div>
               <div className="text-lg font-semibold text-[#fc5d01] mb-1">
                 {getTodayStatus()}
               </div>
               <div className="text-sm text-gray-600 font-medium">Current Status</div>
               <div className="mt-2 text-xs text-gray-500">
-                {isCheckedIn ? 'Keep going!' : 'Ready to start?'}
+                {isCheckedIn ? 'Keep going!' : 'Ready for next session?'}
               </div>
             </div>
             
             <div className="text-center p-6 bg-gradient-to-br from-[#ffac7b] to-[#fd7f33] rounded-xl shadow-md hover:shadow-lg transition-shadow">
-              <div className="text-4xl mb-2">🕐</div>
-              <div className="text-lg font-semibold text-[#fc5d01] mb-1">
-                {todayRecord?.startTime || '--:--'}
+              <div className="text-4xl mb-2">📈</div>
+              <div className="text-3xl font-bold text-[#fc5d01] mb-1">
+                {getCompletedSessions()}
               </div>
-              <div className="text-sm text-gray-600 font-medium">Start Time</div>
+              <div className="text-sm text-gray-600 font-medium">Completed Sessions</div>
               <div className="mt-2 text-xs text-gray-500">
-                {todayRecord?.startTime ? 'Started today' : 'Not started yet'}
+                {isCheckedIn ? `+ 1 in progress` : 'Today'}
+              </div>
+            </div>
+
+            <div className="text-center p-6 bg-gradient-to-br from-[#fd7f33] to-[#fc5d01] rounded-xl shadow-md hover:shadow-lg transition-shadow">
+              <div className="text-4xl mb-2">🕐</div>
+              <div className="text-lg font-semibold text-white mb-1">
+                {currentSession?.startTime || '--:--'}
+              </div>
+              <div className="text-sm text-white font-medium opacity-90">Current Session</div>
+              <div className="mt-2 text-xs text-white opacity-75">
+                {currentSession ? `Session ${currentSession.sessionNumber}` : 'Not started'}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Today's Sessions */}
+      {todayRecords.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] p-6">
+            <h3 className="text-2xl font-bold text-white flex items-center">
+              <span className="mr-3">📅</span>
+              Today&apos;s Sessions
+            </h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {todayRecords.map((record, index) => (
+                <div
+                  key={record.id}
+                  className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 transform hover:scale-102 shadow-sm hover:shadow-md ${
+                    record.id === currentSession?.id 
+                      ? 'bg-gradient-to-r from-green-100 to-green-200 border-2 border-green-300' 
+                      : 'bg-gradient-to-r from-gray-50 to-gray-100 hover:from-[#fedac2] hover:to-[#fdbc94]'
+                  }`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="text-2xl">
+                      {record.id === currentSession?.id ? '🔥' : getStatusIcon(record.status)}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-800 text-lg flex items-center space-x-2">
+                        <span>Session {record.sessionNumber || 1}</span>
+                        {record.id === currentSession?.id && (
+                          <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full animate-pulse">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {record.startTime} - {record.endTime || 'In progress'}
+                      </div>
+                      {record.activityType && (
+                        <div className="text-xs text-blue-600 font-medium">
+                          📋 {record.activityType}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-[#fc5d01] mb-1">
+                      {record.endTime ? 
+                        `${Math.round(record.totalHours * 60)}m` : 
+                        `${Math.round(((new Date().getTime() - new Date(`${record.date} ${record.startTime}`).getTime()) / (1000 * 60)))}m`
+                      }
+                    </div>
+                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      record.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      record.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {record.status.toUpperCase()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Activities - Enhanced */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
@@ -486,7 +609,7 @@ export default function TrainerDashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {recentRecords.map((record, index) => (
+              {recentRecords.slice(0, 5).map((record, index) => (
                 <div
                   key={record.id}
                   className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl hover:from-[#fedac2] hover:to-[#fdbc94] transition-all duration-300 transform hover:scale-102 shadow-sm hover:shadow-md"
@@ -497,16 +620,26 @@ export default function TrainerDashboard() {
                       {getStatusIcon(record.status)}
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-800 text-lg">
-                        {new Date(record.date).toLocaleDateString('en-US', { 
-                          weekday: 'short', 
-                          month: 'short', 
-                          day: 'numeric' 
-                        })}
+                      <div className="font-semibold text-gray-800 text-lg flex items-center space-x-2">
+                        <span>
+                          {new Date(record.date).toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          Session {record.sessionNumber || 1}
+                        </span>
                       </div>
                       <div className="text-sm text-gray-600">
                         {record.startTime} - {record.endTime || 'In progress'}
                       </div>
+                      {record.activityType && (
+                        <div className="text-xs text-blue-600 font-medium">
+                          📋 {record.activityType}
+                        </div>
+                      )}
                       {record.isBackfill && (
                         <div className="text-xs text-orange-600 font-medium">
                           🔄 Backfill Record
@@ -536,12 +669,12 @@ export default function TrainerDashboard() {
       {/* Motivational Footer */}
       <div className="text-center py-6">
         <div className="text-2xl mb-2">
-          {isCheckedIn ? '💪 Keep up the great work!' : '🌟 Ready to make today productive?'}
+          {isCheckedIn ? '💪 Keep up the great work!' : '🌟 Ready to start a new session?'}
         </div>
         <div className="text-gray-600">
           {isCheckedIn 
-            ? `You&apos;ve been working for ${getTodayHours().toFixed(1)} hours today`
-            : 'Click Check In to start tracking your time'}
+            ? `Session ${currentSession?.sessionNumber} - ${((new Date().getTime() - new Date(`${currentSession?.date} ${currentSession?.startTime}`).getTime()) / (1000 * 60 * 60)).toFixed(1)} hours so far`
+            : `You've completed ${getCompletedSessions()} sessions today (${getTodayTotalHours().toFixed(1)} hours total)`}
         </div>
       </div>
     </div>

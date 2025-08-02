@@ -22,6 +22,8 @@ export interface AttendanceRecord {
   isBackfill: boolean; // true if this is a backfill attendance
   backfillReason?: string; // reason for backfill (required if isBackfill is true)
   createdAt?: string;
+  sessionNumber?: number; // Session number for multiple check-ins per day
+  activityType?: string; // Type of activity for this session
 }
 
 export interface TrainerStats {

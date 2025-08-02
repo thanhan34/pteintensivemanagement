@@ -27,6 +27,7 @@ export default function AttendanceList() {
   // Date range state
   const [startDate, setStartDate] = useState(settings.attendance.defaultFromDate);
   const [endDate, setEndDate] = useState(settings.attendance.defaultToDate);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const isAdmin = session?.user?.role === 'admin';
   const isTrainer = session?.user?.role === 'trainer';
@@ -143,7 +144,7 @@ export default function AttendanceList() {
   }, [attendanceRecords, startDate, endDate]);
 
   const handleStatusUpdate = async (recordId: string, newStatus: 'approved' | 'rejected') => {
-    if (!session?.user?.id || !isAdmin) return;
+    if (!session?.user?.id || (!isAdmin && !isAdminAssistant)) return;
 
     try {
       const attendanceRef = doc(db, 'attendance', recordId);
@@ -202,6 +203,15 @@ export default function AttendanceList() {
 
     if (record.status !== 'pending' && !isAdmin) {
       setError('Can only edit pending records');
+      return;
+    }
+
+    // Check if the record is from today (only allow editing records from today)
+    const today = new Date().toISOString().split('T')[0];
+    const recordDate = record.date;
+    
+    if (recordDate !== today && !isAdmin) {
+      setError('Can only edit records from today. Past records cannot be modified.');
       return;
     }
 
@@ -353,8 +363,35 @@ export default function AttendanceList() {
 
   const { approvedHours, pendingHours } = calculateHours();
 
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className={`space-y-8 ${isFullscreen ? 'fixed inset-0 z-50 bg-white overflow-auto p-4' : 'max-w-7xl mx-auto'}`}>
+      {/* Fullscreen Toggle Button */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={toggleFullscreen}
+          className="bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 flex items-center space-x-2 hover:scale-105 shadow-lg"
+        >
+          {isFullscreen ? (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Exit Fullscreen</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+              <span>Fullscreen View</span>
+            </>
+          )}
+        </button>
+      </div>
       {error && (
         <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-6 py-4 rounded-r-lg shadow-md animate-pulse">
           <div className="flex items-center">
@@ -495,9 +532,15 @@ export default function AttendanceList() {
             <div className="text-sm text-gray-400">Try adjusting your date range or filters</div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+          <div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-center">
+              <div className="text-blue-700 text-sm font-medium">
+                📱 Scroll horizontally to see all columns including Actions →
+              </div>
+            </div>
+            <div className="table-container">
+              <table className="attendance-table">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     <div className="flex items-center">
@@ -513,6 +556,12 @@ export default function AttendanceList() {
                       </div>
                     </th>
                   )}
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">#️⃣</span>
+                      Session
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     <div className="flex items-center">
                       <span className="mr-2">⏰</span>
@@ -581,6 +630,21 @@ export default function AttendanceList() {
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
+                          {record.sessionNumber || 1}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            Session {record.sessionNumber || 1}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {record.activityType || 'No activity specified'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gray-900">
                         {record.startTime} - {record.endTime || 'In progress'}
                       </div>
@@ -630,8 +694,8 @@ export default function AttendanceList() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        {isAdmin && record.status === 'pending' && (
+                      <div className="action-buttons">
+                        {(isAdmin || isAdminAssistant) && record.status === 'pending' && (
                           <>
                             <button
                               onClick={() => handleStatusUpdate(record.id, 'approved')}
@@ -669,6 +733,7 @@ export default function AttendanceList() {
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         )}
       </div>
