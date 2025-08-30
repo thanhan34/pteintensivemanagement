@@ -92,6 +92,8 @@ export default function UserRoleManager() {
         return 'Administrator';
       case 'administrative_assistant':
         return 'Administrative Assistant';
+      case 'accountance':
+        return 'Accountance';
       case 'trainer':
         return 'Trainer';
       default:
@@ -105,6 +107,8 @@ export default function UserRoleManager() {
         return 'bg-[#fc5d01] text-white';
       case 'administrative_assistant':
         return 'bg-[#ffac7b] text-[#fc5d01]';
+      case 'accountance':
+        return 'bg-[#fdbc94] text-[#fc5d01]';
       case 'trainer':
         return 'bg-[#fedac2] text-[#fc5d01]';
       default:
@@ -195,6 +199,7 @@ export default function UserRoleManager() {
                       >
                         <option value="trainer">Trainer</option>
                         <option value="administrative_assistant">Administrative Assistant</option>
+                        <option value="accountance">Accountance</option>
                         <option value="admin">Administrator</option>
                       </select>
                     ) : (

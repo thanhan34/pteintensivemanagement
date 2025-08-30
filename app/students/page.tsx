@@ -37,9 +37,9 @@ export default function Students() {
     fetchSettings();
   }, []);
 
-  // Fetch students only for admin users
+  // Fetch students for admin and administrative assistant users
   const fetchStudents = useCallback(async () => {
-    if (!isAdmin) {
+    if (!isAdmin && !isAssistant) {
       setLoading(false);
       return;
     }
@@ -58,15 +58,15 @@ export default function Students() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, isAssistant]);
 
   useEffect(() => {
-    if (status === 'authenticated' && isAdmin) {
+    if (status === 'authenticated' && (isAdmin || isAssistant)) {
       fetchStudents();
     } else {
       setLoading(false);
     }
-  }, [status, isAdmin, fetchStudents]);
+  }, [status, isAdmin, isAssistant, fetchStudents]);
 
   const handleAddStudent = async (formData: StudentFormData) => {
     try {
@@ -76,19 +76,13 @@ export default function Students() {
         updatedAt: new Date().toISOString()
       });
 
-      if (isAdmin) {
+      if (isAdmin || isAssistant) {
         const newStudent: Student = {
           ...formData,
           id: docRef.id,
         };
         setStudents(prevStudents => [newStudent, ...prevStudents]);
         alert('Student added successfully');
-      } else if (isAssistant) {
-        setShowSuccessMessage(true);
-        // Clear form
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
       }
     } catch (err) {
       console.error('Error adding student:', err);
@@ -194,17 +188,8 @@ export default function Students() {
             />
           </div>
 
-          {/* Success Message for Assistant */}
-          {isAssistant && showSuccessMessage && (
-            <div className="mt-8 bg-white rounded-lg shadow p-8">
-              <p className="text-center text-gray-600">
-                Student added successfully! Only administrators can view and manage the student list.
-              </p>
-            </div>
-          )}
-
-          {/* Student List Section - Only for Admin */}
-          {isAdmin && !showSuccessMessage && (
+          {/* Student List Section - For Admin and Administrative Assistant */}
+          {(isAdmin || isAssistant) && !showSuccessMessage && (
             <div>
               <h2 className="text-2xl font-bold text-[#fc5d01] mb-4">Student List</h2>
               {error ? (

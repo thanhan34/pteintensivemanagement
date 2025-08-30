@@ -21,6 +21,8 @@ export default function UserProfile() {
         return 'Administrative Assistant';
       case 'trainer':
         return 'Trainer';
+      case 'accountance':
+        return 'Accountance';
       default:
         return role;
     }

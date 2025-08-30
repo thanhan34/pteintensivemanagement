@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { OperationFee, OperationFeeInput } from '../types/operation';
-import TabNavigation from './TabNavigation';
 import { doc, updateDoc, addDoc, collection, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { useSession } from 'next-auth/react';
 
 interface OperationFeeListProps {
   operationFees: OperationFee[];
@@ -15,8 +15,6 @@ interface OperationFeeListProps {
   onExport: () => void;
   formatVND: (amount: number) => string;
   formatDate: (date: string) => string;
-  activeTab: 'class' | '2345' | 'one-on-one';
-  onTabChange: (tab: 'class' | '2345' | 'one-on-one') => void;
   currentDate: string;
   onUpdate: () => void;
 }
@@ -30,26 +28,28 @@ export default function OperationFeeList({
   onExport,
   formatVND,
   formatDate,
-  activeTab,
-  onTabChange,
   currentDate,
   onUpdate,
 }: OperationFeeListProps) {
+  const { data: session } = useSession();
   const [editingFee, setEditingFee] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [newFee, setNewFee] = useState<OperationFeeInput>({
     trainerName: '',
     amount: 0,
     date: currentDate,
     notes: '',
-    type: 'class'
+    type: '',
+    implementer: ''
   });
   const [editForm, setEditForm] = useState<OperationFeeInput>({
     trainerName: '',
     amount: 0,
     date: currentDate,
     notes: '',
-    type: 'class'
+    type: '',
+    implementer: ''
   });
 
   const handleAddFee = async () => {
@@ -67,7 +67,8 @@ export default function OperationFeeList({
         amount: 0,
         date: currentDate,
         notes: '',
-        type: activeTab
+        type: '',
+        implementer: ''
       });
       onUpdate(); // Trigger refetch after add
     } catch (error) {
@@ -83,7 +84,8 @@ export default function OperationFeeList({
       amount: fee.amount,
       date: fee.date,
       notes: fee.notes,
-      type: fee.type
+      type: fee.type,
+      implementer: fee.implementer || ''
     });
   };
 
@@ -128,6 +130,27 @@ export default function OperationFeeList({
     }
   };
 
+  const handleApproveReject = async (fee: OperationFee, action: 'approved' | 'rejected') => {
+    if (!fee.id || !session?.user?.id) return;
+    
+    setApprovingId(fee.id);
+    try {
+      const feeRef = doc(db, 'operationFees', fee.id);
+      await updateDoc(feeRef, {
+        status: action,
+        approvedBy: session.user.id,
+        approvedAt: new Date().toISOString()
+      });
+      onUpdate(); // Trigger refetch after approval status update
+    } catch (error) {
+      console.error('Error updating fee approval status:', error);
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const isAdmin = session?.user?.role === 'admin';
+
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4">
@@ -154,12 +177,6 @@ export default function OperationFeeList({
           </button>
         </div>
       </div>
-
-      <TabNavigation
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        type="operation"
-      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <input
@@ -210,14 +227,15 @@ export default function OperationFeeList({
         <table className="min-w-full bg-white border border-gray-300">
           <thead>
             <tr className="bg-gray-100">
-              <th className="px-4 py-2 border">Trainer Name</th>
+              <th className="px-4 py-2 border">Chi tiết chi phí</th>
               <th className="px-4 py-2 border">Amount</th>
               <th className="px-4 py-2 border">Date</th>
               <th className="px-4 py-2 border">Type</th>
+              <th className="px-4 py-2 border">CV Thực Hiện</th>
               <th className="px-4 py-2 border">Notes</th>
-              {activeTab === 'one-on-one' && (
-                <th className="px-4 py-2 border">Process Status</th>
-              )}
+              <th className="px-4 py-2 border">Images</th>
+              <th className="px-4 py-2 border">Approval Status</th>
+              <th className="px-4 py-2 border">Process Status</th>
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
@@ -226,7 +244,7 @@ export default function OperationFeeList({
               <tr 
                 key={fee.id}
                 className={
-                  activeTab === 'one-on-one'
+                  fee.type === 'one-on-one'
                     ? fee.isProcess
                       ? 'bg-green-50'
                       : 'bg-red-50'
@@ -265,18 +283,23 @@ export default function OperationFeeList({
                 </td>
                 <td className="px-4 py-2 border">
                   {editingFee === fee.id ? (
-                    <select
+                    <input
+                      type="text"
                       className="w-full p-1 border rounded"
                       value={editForm.type}
-                      onChange={(e) => setEditForm({...editForm, type: e.target.value as 'class' | '2345' | 'one-on-one'})}
-                    >
-                      <option value="class">Class Fee</option>
-                      <option value="2345">2345 Fee</option>
-                      <option value="one-on-one">1-1 Fee</option>
-                    </select>
-                  ) : fee.type === 'class' ? 'Class Fee' :
-                     fee.type === '2345' ? '2345 Fee' :
-                     fee.type === 'one-on-one' ? '1-1 Fee' : 'Class Fee'}
+                      onChange={(e) => setEditForm({...editForm, type: e.target.value})}
+                    />
+                  ) : fee.type || '-'}
+                </td>
+                <td className="px-4 py-2 border">
+                  {editingFee === fee.id ? (
+                    <input
+                      type="text"
+                      className="w-full p-1 border rounded"
+                      value={editForm.implementer || ''}
+                      onChange={(e) => setEditForm({...editForm, implementer: e.target.value})}
+                    />
+                  ) : fee.implementer || '-'}
                 </td>
                 <td className="px-4 py-2 border">
                   {editingFee === fee.id ? (
@@ -288,8 +311,69 @@ export default function OperationFeeList({
                     />
                   ) : fee.notes}
                 </td>
-                {activeTab === 'one-on-one' && (
-                  <td className="px-4 py-2 border">
+                <td className="px-4 py-2 border">
+                  {fee.imageUrls && fee.imageUrls.length > 0 ? (
+                    <div className="flex gap-1">
+                      {fee.imageUrls.slice(0, 3).map((url, index) => (
+                        <img
+                          key={index}
+                          src={url}
+                          alt={`Receipt ${index + 1}`}
+                          className="w-8 h-8 object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
+                          onClick={() => window.open(url, '_blank')}
+                        />
+                      ))}
+                      {fee.imageUrls.length > 3 && (
+                        <span className="text-xs text-gray-500 self-center">
+                          +{fee.imageUrls.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm">No images</span>
+                  )}
+                </td>
+                <td className="px-4 py-2 border">
+                  {fee.status === 'pending' ? (
+                    <div className="flex gap-1">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Pending
+                      </span>
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => handleApproveReject(fee, 'approved')}
+                            disabled={approvingId === fee.id}
+                            className="px-2 py-1 rounded text-xs bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => handleApproveReject(fee, 'rejected')}
+                            disabled={approvingId === fee.id}
+                            className="px-2 py-1 rounded text-xs bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                          >
+                            ✗
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : fee.status === 'approved' ? (
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Approved
+                    </span>
+                  ) : fee.status === 'rejected' ? (
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Rejected
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      N/A
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-2 border">
+                  {fee.type === 'one-on-one' ? (
                     <button
                       onClick={() => handleProcessToggle(fee)}
                       disabled={processingId === fee.id}
@@ -301,8 +385,10 @@ export default function OperationFeeList({
                     >
                       {processingId === fee.id ? 'Processing...' : (fee.isProcess ? 'Processed' : 'Not Processed')}
                     </button>
-                  </td>
-                )}
+                  ) : (
+                    <span className="text-gray-500">N/A</span>
+                  )}
+                </td>
                 <td className="px-4 py-2 border">
                   {editingFee === fee.id ? (
                     <div className="flex gap-2">

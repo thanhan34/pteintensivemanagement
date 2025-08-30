@@ -50,6 +50,14 @@ export default withAuth(
       return NextResponse.redirect(new URL('/students', req.url));
     }
 
+    // Accountance can only access accounting
+    if (role === 'accountance') {
+      if (path.startsWith('/accounting')) {
+        return NextResponse.next();
+      }
+      return NextResponse.redirect(new URL('/accounting', req.url));
+    }
+
     // For any other case, redirect to home
     return NextResponse.redirect(new URL('/', req.url));
   },

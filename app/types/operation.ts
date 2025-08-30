@@ -2,13 +2,18 @@ import { FieldValue, Timestamp } from 'firebase/firestore';
 
 export interface OperationFee {
   id?: string;
-  trainerName: string;
+  trainerName: string; // Sẽ đổi thành "Chi tiết chi phí"
   amount: number;
   date: string;
   notes: string;
-  type: 'one-on-one' | 'class' | '2345';
+  type: string; // Đổi từ enum thành string để cho phép nhập tự do
   createdAt: string | FieldValue | Timestamp;
   isProcess?: boolean;
+  status?: 'pending' | 'approved' | 'rejected';
+  createdBy?: string; // ID of user who created this record
+  approvedBy?: string; // ID of admin who approved/rejected
+  approvedAt?: string; // Date when approved/rejected
+  implementer?: string; // CV Thực Hiện
 }
 
 export type OperationFeeInput = Omit<OperationFee, 'id' | 'createdAt'>;

@@ -108,6 +108,17 @@ export default function Navigation() {
             </Link>
           </>
         );
+      case 'accountance':
+        return (
+          <>
+            <Link
+              href="/accounting"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Accounting
+            </Link>
+          </>
+        );
       default:
         return null;
     }
@@ -261,6 +272,17 @@ export default function Navigation() {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Attendance
+                </Link>
+              </>
+            )}
+            {userRole === 'accountance' && (
+              <>
+                <Link
+                  href="/accounting"
+                  className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Accounting
                 </Link>
               </>
             )}

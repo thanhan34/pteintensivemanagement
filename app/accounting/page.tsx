@@ -7,10 +7,13 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import * as XLSX from 'xlsx';
 import { useSettings } from '../hooks/useSettings';
+import { useSession } from 'next-auth/react';
 import FilterSection from '../components/FilterSection';
 import SummarySection from '../components/SummarySection';
 import StudentPaymentList from '../components/StudentPaymentList';
 import OperationFeeList from '../components/OperationFeeList';
+import AccountanceOperationFeeForm from '../components/AccountanceOperationFeeForm';
+import AccountancePendingFees from '../components/AccountancePendingFees';
 
 interface StudentExportData {
   [key: string]: string | number;
@@ -37,13 +40,13 @@ type StudentType = 'one-on-one' | 'class' | '2345';
 
 export default function AccountingPage() {
   const { settings } = useSettings();
+  const { data: session } = useSession();
   const [students, setStudents] = useState<Student[]>([]);
   const [operationFees, setOperationFees] = useState<OperationFee[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchFeeTerm, setSearchFeeTerm] = useState('');
   const [minTargetScore, setMinTargetScore] = useState<number | ''>('');
   const [maxTargetScore, setMaxTargetScore] = useState<number | ''>('');
-  const [activeFeeTab, setActiveFeeTab] = useState<StudentType>('class');
   
   // Date range states
   const currentDate = new Date().toISOString().split('T')[0];
@@ -123,7 +126,7 @@ export default function AccountingPage() {
       'Notes': student.notes,
       'Process Status': student.type === 'one-on-one' ? (student.isProcess ? 'Processed' : 'Not Processed') : 'N/A'
     }));
-    exportToExcel(exportData, `student_payments_${activeFeeTab}`);
+    exportToExcel(exportData, 'student_payments_all');
   };
 
   const handleExportOperationFees = () => {
@@ -135,7 +138,7 @@ export default function AccountingPage() {
       'Notes': fee.notes,
       'Process Status': fee.type === 'one-on-one' ? (fee.isProcess ? 'Processed' : 'Not Processed') : 'N/A'
     }));
-    exportToExcel(exportData, `operation_fees_${activeFeeTab}`);
+    exportToExcel(exportData, 'operation_fees_all');
   };
 
   // Date filtering function
@@ -146,10 +149,9 @@ export default function AccountingPage() {
     return checkDate >= start && checkDate <= end;
   };
 
-  // Filter students based on search term, date range, target score, and type
+  // Filter students based on search term, date range, and target score
   const filteredStudents = students
     .filter(student =>
-      (student.type || 'class') === activeFeeTab && // Filter by type
       (student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.notes.toLowerCase().includes(searchTerm.toLowerCase()))
     )
@@ -169,10 +171,9 @@ export default function AccountingPage() {
         : dateB.getTime() - dateA.getTime();
     });
 
-  // Filter operation fees based on search term, date range, and type
+  // Filter operation fees based on search term and date range
   const filteredFees = operationFees
     .filter(fee =>
-      (fee.type || 'class') === activeFeeTab && // Filter by type
       (fee.trainerName.toLowerCase().includes(searchFeeTerm.toLowerCase()) ||
       fee.notes.toLowerCase().includes(searchFeeTerm.toLowerCase()))
     )
@@ -190,6 +191,38 @@ export default function AccountingPage() {
   const totalOperationFees = filteredFees.reduce((sum, fee) => sum + fee.amount, 0);
   const remainingBalance = totalTuition - totalOperationFees;
 
+  const userRole = session?.user?.role;
+
+  // Accountance view - only show form and pending fees
+  if (userRole === 'accountance') {
+    return (
+      <div className="min-h-screen bg-[#fff5ef]">
+        <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-[#fc5d01] mb-2">Quản Lý Chi Phí</h1>
+              <p className="text-gray-600">Nhập và theo dõi chi phí hoạt động</p>
+            </div>
+            
+            <div className="space-y-6">
+              <AccountanceOperationFeeForm
+                currentDate={currentDate}
+                onUpdate={fetchData}
+              />
+              
+              <AccountancePendingFees
+                operationFees={operationFees}
+                formatVND={formatVND}
+                formatDate={formatDate}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin and other roles view - show full accounting page
   return (
     <div className="min-h-screen bg-[#fff5ef]">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -220,8 +253,6 @@ export default function AccountingPage() {
             onExport={handleExportStudents}
             formatVND={formatVND}
             formatDate={formatDate}
-            activeTab={activeFeeTab}
-            onTabChange={setActiveFeeTab}
             onUpdate={fetchData}
           />
 
@@ -234,8 +265,6 @@ export default function AccountingPage() {
             onExport={handleExportOperationFees}
             formatVND={formatVND}
             formatDate={formatDate}
-            activeTab={activeFeeTab}
-            onTabChange={setActiveFeeTab}
             currentDate={currentDate}
             onUpdate={fetchData}
           />

@@ -1,12 +1,14 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, enableIndexedDbPersistence, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig } from './firebase-config';
 
 // Initialize Firebase
 let app: FirebaseApp;
 let db: Firestore;
 let auth: Auth;
+let storage: FirebaseStorage;
 
 try {
   // Check if Firebase is already initialized
@@ -37,6 +39,10 @@ try {
   auth = getAuth(app);
   console.log('Firebase Auth initialized successfully');
 
+  // Initialize Storage
+  storage = getStorage(app);
+  console.log('Firebase Storage initialized successfully');
+
 } catch (error) {
   console.error('Error initializing Firebase:', error);
   if (error instanceof Error) {
@@ -49,7 +55,7 @@ try {
 }
 
 // Verify initialization
-if (!app || !db || !auth) {
+if (!app || !db || !auth || !storage) {
   console.error('Firebase services not properly initialized');
   throw new Error('Firebase services not properly initialized');
 }
@@ -62,4 +68,4 @@ console.log('Firebase initialized with:', {
   hasAppId: !!firebaseConfig.appId,
 });
 
-export { app, db, auth };
+export { app, db, auth, storage };
