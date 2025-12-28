@@ -19,6 +19,12 @@ export default function Navigation() {
         return (
           <>
             <Link
+              href="/leads"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Leads
+            </Link>
+            <Link
               href="/students"
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
@@ -112,6 +118,12 @@ export default function Navigation() {
         return (
           <>
             <Link
+              href="/leads"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Leads
+            </Link>
+            <Link
               href="/students"
               className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
             >
@@ -197,6 +209,13 @@ export default function Navigation() {
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
             {userRole === 'admin' && (
               <>
+                <Link
+                  href="/leads"
+                  className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Leads
+                </Link>
                 <Link
                   href="/students"
                   className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
@@ -300,6 +319,13 @@ export default function Navigation() {
             )}
             {userRole === 'saler' && (
               <>
+                <Link
+                  href="/leads"
+                  className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Leads
+                </Link>
                 <Link
                   href="/students"
                   className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
