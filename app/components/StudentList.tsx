@@ -116,7 +116,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
       // Format payment dates as a comma-separated string
       const paymentDates = student.tuitionPaymentDates.map(date => formatDate(date)).join(', ');
       
-      const baseData: any = {
+      const baseData: Record<string, string | number> = {
         'Student ID': student.studentId || '-',
         'Name': student.name,
         'Phone': canViewPhone ? student.phone : '***-***-****',

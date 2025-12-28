@@ -4,7 +4,7 @@ export interface UploadResult {
   error?: string;
 }
 
-export const uploadImage = async (file: File, folder: string = 'receipts'): Promise<UploadResult> => {
+export const uploadImage = async (file: File): Promise<UploadResult> => {
   try {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
