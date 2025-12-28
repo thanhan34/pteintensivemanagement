@@ -14,6 +14,7 @@ export interface OperationFee {
   approvedBy?: string; // ID of admin who approved/rejected
   approvedAt?: string; // Date when approved/rejected
   implementer?: string; // CV Thực Hiện
+  imageUrls?: string[]; // Array of image URLs for receipts
 }
 
 export type OperationFeeInput = Omit<OperationFee, 'id' | 'createdAt'>;
