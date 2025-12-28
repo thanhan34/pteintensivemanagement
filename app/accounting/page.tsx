@@ -36,8 +36,6 @@ interface OperationFeeExportData {
   'Process Status': string;
 }
 
-type StudentType = 'one-on-one' | 'class' | '2345';
-
 export default function AccountingPage() {
   const { settings } = useSettings();
   const { data: session } = useSession();

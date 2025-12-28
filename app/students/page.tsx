@@ -15,7 +15,6 @@ export default function Students() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
 
   const isAdmin = session?.user?.role === 'admin';
@@ -190,7 +189,7 @@ export default function Students() {
           </div>
 
           {/* Student List Section - For Admin, Administrative Assistant, and Saler */}
-          {(isAdmin || isAssistant || isSaler) && !showSuccessMessage && (
+          {(isAdmin || isAssistant || isSaler) && (
             <div>
               <h2 className="text-2xl font-bold text-[#fc5d01] mb-4">Student List</h2>
               {error ? (

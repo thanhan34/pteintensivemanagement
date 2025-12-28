@@ -72,7 +72,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
         const dateB = new Date(b.startDate).getTime();
         return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
       });
-  }, [students, searchTerm, sortOrder, isAdmin, startDateFilter, endDateFilter]);
+  }, [students, searchTerm, sortOrder, isAdmin, isAdministrativeAssistant, isSaler, startDateFilter, endDateFilter]);
 
   // Access control check - allow admin, administrative_assistant, and saler
   if (!session?.user?.role || (session.user.role !== 'admin' && session.user.role !== 'administrative_assistant' && session.user.role !== 'saler')) {
