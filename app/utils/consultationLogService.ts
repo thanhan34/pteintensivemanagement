@@ -5,9 +5,7 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
-  doc,
-  getDoc
+  orderBy
 } from 'firebase/firestore';
 import { ConsultationLog, ConsultationActionType } from '../types/consultationLog';
 
@@ -37,7 +35,7 @@ export async function addConsultationLog(
   userName: string,
   actionType: ConsultationActionType,
   content: string,
-  metadata?: any
+  metadata?: Record<string, string>
 ): Promise<string> {
   try {
     const logData = {

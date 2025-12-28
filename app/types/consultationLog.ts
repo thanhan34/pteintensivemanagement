@@ -15,11 +15,11 @@ export interface ConsultationLog {
   content: string;
   createdAt: string;
   metadata?: {
-    oldStatus?: string;     // Nếu actionType = 'status_change'
+    oldStatus?: string;
     newStatus?: string;
-    oldAssignee?: string;   // Nếu actionType = 'assignment'
+    oldAssignee?: string;
     newAssignee?: string;
-    [key: string]: any;     // Để mở rộng thêm metadata nếu cần
+    [key: string]: string | undefined;
   };
 }
 

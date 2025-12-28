@@ -9,9 +9,7 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
-  limit,
-  Timestamp
+  orderBy
 } from 'firebase/firestore';
 import { Lead, LeadFormData, LeadStatus } from '../types/lead';
 import { User } from '../types/roles';
@@ -148,8 +146,7 @@ export async function autoAssignLead(): Promise<string | null> {
 // Create a new lead
 export async function createLead(
   formData: LeadFormData,
-  createdBy: string,
-  createdByName: string
+  createdBy: string
 ): Promise<string> {
   try {
     // If assignedTo is empty and assignmentType is auto, auto-assign

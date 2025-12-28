@@ -9,11 +9,10 @@ import {
   getLeadsByAssignee, 
   createLead, 
   updateLead, 
-  updateLeadStatus,
-  getAllSalers
+  updateLeadStatus
 } from '../utils/leadService';
 import { convertLeadToStudent, canConvertLead } from '../utils/leadConverter';
-import { getDocs, collection, query, where } from 'firebase/firestore';
+import { getDocs, collection, query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import LeadKanbanBoard from '../components/LeadKanbanBoard';
 import LeadTableView from '../components/LeadTableView';
@@ -22,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Filter, Phone, Mail, Calendar, DollarSign, Target, Users, CheckCircle2, LayoutGrid, Table, Trash2 } from 'lucide-react';
+import { Plus, Phone, Mail, Calendar, DollarSign, Target, Users, CheckCircle2, LayoutGrid, Table, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { deleteLead } from '../utils/leadService';
@@ -98,7 +97,7 @@ export default function LeadsPage() {
     if (!userId || (!isAdmin && !isSaler)) return;
 
     try {
-      await createLead(formData, userId, session?.user?.name || 'Unknown');
+      await createLead(formData, userId);
       setShowForm(false);
       await fetchLeads();
       alert('Lead đã được tạo thành công!');
@@ -168,7 +167,7 @@ export default function LeadsPage() {
 
     setConverting(true);
     try {
-      const studentId = await convertLeadToStudent(selectedLead.id);
+      await convertLeadToStudent(selectedLead.id);
       alert('✅ Convert thành công! Đang chuyển đến trang Students...');
       setShowLeadDetail(false);
       setSelectedLead(null);
