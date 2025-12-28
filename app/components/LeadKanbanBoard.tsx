@@ -1,15 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Lead, LeadStatus, getLeadStatusLabel, getLeadStatusColor, getLeadSourceLabel } from '../types/lead';
+import { Lead, LeadStatus, getLeadStatusColor, getLeadSourceLabel } from '../types/lead';
 import { User } from '../types/roles';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Phone, 
-  Mail, 
   Calendar,
   AlertTriangle,
   CheckCircle2,
@@ -210,10 +208,6 @@ export default function LeadKanbanBoard({ leads, users, onStatusChange, onLeadCl
     }
     
     setDraggedLeadId(null);
-  };
-
-  const handleDragStart = (leadId: string) => {
-    setDraggedLeadId(leadId);
   };
 
   return (

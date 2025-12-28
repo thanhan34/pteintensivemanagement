@@ -97,7 +97,7 @@ export async function GET(request: Request) {
 }
 
 // Test endpoint - remove in production or add authentication
-export async function POST(request: Request) {
+export async function POST() {
   try {
     console.log('🧪 Testing lead follow-up reminder...');
     
