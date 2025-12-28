@@ -108,6 +108,29 @@ export default function Navigation() {
             </Link>
           </>
         );
+      case 'saler':
+        return (
+          <>
+            <Link
+              href="/students"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Students
+            </Link>
+            <Link
+              href="/tasks"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Projects
+            </Link>
+            <Link
+              href="/attendance"
+              className="text-gray-700 hover:text-[#fc5d01] px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Attendance
+            </Link>
+          </>
+        );
       case 'accountance':
         return (
           <>
@@ -251,6 +274,31 @@ export default function Navigation() {
               </>
             )}
             {userRole === 'administrative_assistant' && (
+              <>
+                <Link
+                  href="/students"
+                  className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Students
+                </Link>
+                <Link
+                  href="/tasks"
+                  className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Projects
+                </Link>
+                <Link
+                  href="/attendance"
+                  className="text-gray-700 hover:text-[#fc5d01] hover:bg-[#fedac2] block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Attendance
+                </Link>
+              </>
+            )}
+            {userRole === 'saler' && (
               <>
                 <Link
                   href="/students"

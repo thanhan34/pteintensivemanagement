@@ -96,6 +96,8 @@ export default function UserRoleManager() {
         return 'Accountance';
       case 'trainer':
         return 'Trainer';
+      case 'saler':
+        return 'Saler';
       default:
         return role;
     }
@@ -111,6 +113,8 @@ export default function UserRoleManager() {
         return 'bg-[#fdbc94] text-[#fc5d01]';
       case 'trainer':
         return 'bg-[#fedac2] text-[#fc5d01]';
+      case 'saler':
+        return 'bg-[#fd7f33] text-white';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -199,6 +203,7 @@ export default function UserRoleManager() {
                       >
                         <option value="trainer">Trainer</option>
                         <option value="administrative_assistant">Administrative Assistant</option>
+                        <option value="saler">Saler</option>
                         <option value="accountance">Accountance</option>
                         <option value="admin">Administrator</option>
                       </select>

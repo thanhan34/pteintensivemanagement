@@ -25,7 +25,11 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
   const isAdmin = session?.user?.role === 'admin';
   const isFullAdmin = session?.user?.role === 'admin';
   const isAdministrativeAssistant = session?.user?.role === 'administrative_assistant';
+  const isSaler = session?.user?.role === 'saler';
   const canViewFees = isFullAdmin; // Only full admins can see fees
+  const canViewPhone = isFullAdmin || isSaler; // Admin and Saler can see phone numbers
+  const canEdit = isFullAdmin || isAdministrativeAssistant || isSaler; // Admin, Assistant, and Saler can edit
+  const canDelete = isFullAdmin; // Only full admins can delete
   
   const toggleExpanded = (studentId: string) => {
     setExpandedStudents(prev => ({
@@ -36,7 +40,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
 
   // Memoized filtered and sorted students
   const filteredAndSortedStudents = useMemo(() => {
-    if (!isAdmin && !isAdministrativeAssistant) return [];
+    if (!isAdmin && !isAdministrativeAssistant && !isSaler) return [];
     
     return [...students]
       .filter(student => {
@@ -70,8 +74,8 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
       });
   }, [students, searchTerm, sortOrder, isAdmin, startDateFilter, endDateFilter]);
 
-  // Access control check - allow both admin and administrative_assistant
-  if (!session?.user?.role || (session.user.role !== 'admin' && session.user.role !== 'administrative_assistant')) {
+  // Access control check - allow admin, administrative_assistant, and saler
+  if (!session?.user?.role || (session.user.role !== 'admin' && session.user.role !== 'administrative_assistant' && session.user.role !== 'saler')) {
     console.log('Unauthorized access attempted');
     return null;
   }
@@ -112,9 +116,10 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
       // Format payment dates as a comma-separated string
       const paymentDates = student.tuitionPaymentDates.map(date => formatDate(date)).join(', ');
       
-      return {
+      const baseData: any = {
+        'Student ID': student.studentId || '-',
         'Name': student.name,
-        'Phone': student.phone,
+        'Phone': canViewPhone ? student.phone : '***-***-****',
         'Province': student.province,
         'Country': student.country || 'Vietnam',
         'Date of Birth': student.dob ? formatDate(student.dob) : '-',
@@ -122,7 +127,6 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
         'Duration (months)': student.studyDuration,
         'Target Score': student.targetScore,
         'Trainer': student.trainerName,
-        'Tuition Fee': student.tuitionFee,
         'Payment Status': student.tuitionPaymentStatus,
         'Payment Dates': paymentDates,
         'Referrer': student.referrer || '-',
@@ -130,6 +134,13 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
         'Type': student.type || 'class',
         'Process Status': student.isProcess ? 'Processed' : 'Not Processed'
       };
+
+      // Only include tuition fee if user has permission
+      if (canViewFees) {
+        baseData['Tuition Fee'] = student.tuitionFee;
+      }
+
+      return baseData;
     });
 
     // Create worksheet
@@ -287,6 +298,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-[#fedac2]">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Student ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Student</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Contact</th>
@@ -303,6 +315,9 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
                 {filteredAndSortedStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-[#fff5ef] transition-colors duration-200">
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{student.studentId || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{student.name}</div>
@@ -316,7 +331,9 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{student.phone}</div>
+                      <div className="text-sm text-gray-900">
+                        {canViewPhone ? student.phone : '***-***-****'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{student.province}</div>
@@ -346,24 +363,28 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         </button>
-                        <button
-                          onClick={() => onEdit(student)}
-                          className="text-[#fc5d01] hover:text-[#fd7f33] p-1 rounded"
-                          title="Edit"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => onDelete(student.id)}
-                          className="text-red-500 hover:text-red-700 p-1 rounded"
-                          title="Delete"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(student)}
+                            className="text-[#fc5d01] hover:text-[#fd7f33] p-1 rounded"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => onDelete(student.id)}
+                            className="text-red-500 hover:text-red-700 p-1 rounded"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

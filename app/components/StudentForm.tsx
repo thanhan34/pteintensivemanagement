@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Student, StudentFormData } from '../types/student';
 import { useSettings } from '../hooks/useSettings';
 
@@ -10,8 +11,11 @@ interface StudentFormProps {
 }
 
 export default function StudentForm({ onSubmit, initialData }: StudentFormProps) {
+  const { data: session } = useSession();
   const { settings } = useSettings();
+  const isAdmin = session?.user?.role === 'admin';
   const [formData, setFormData] = useState<StudentFormData>({
+    studentId: '',
     name: '',
     phone: '',
     dob: new Date().toISOString().split('T')[0],
@@ -35,6 +39,7 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
   useEffect(() => {
     if (initialData) {
       setFormData({
+        studentId: initialData.studentId || '',
         name: initialData.name,
         phone: initialData.phone || '',
         dob: initialData.dob || new Date().toISOString().split('T')[0],
@@ -71,6 +76,7 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
       if (!initialData) {
         // Only reset form if this is a new student (not editing)
         setFormData({
+          studentId: '',
           name: '',
           phone: '',
           dob: new Date().toISOString().split('T')[0],
@@ -121,6 +127,17 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Student ID (Mã số sinh viên)</label>
+        <input
+          type="text"
+          value={formData.studentId}
+          onChange={(e) => setFormData({...formData, studentId: e.target.value})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+          placeholder="Optional - can be updated later"
+        />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700">Name</label>
         <input
@@ -273,17 +290,19 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
         </select>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Tuition Fee (VND)</label>
-        <input
-          type="number"
-          value={formData.tuitionFee}
-          onChange={(e) => setFormData({...formData, tuitionFee: Number(e.target.value)})}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
-          required
-          min="0"
-        />
-      </div>
+      {isAdmin && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Tuition Fee (VND)</label>
+          <input
+            type="number"
+            value={formData.tuitionFee}
+            onChange={(e) => setFormData({...formData, tuitionFee: Number(e.target.value)})}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+            required
+            min="0"
+          />
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Payment Status</label>

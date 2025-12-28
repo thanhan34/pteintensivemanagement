@@ -1,5 +1,6 @@
 export interface Student {
   id: string;
+  studentId?: string; // Student ID - optional, can be updated manually later
   name: string;
   phone: string;
   dob: string; // date of birth

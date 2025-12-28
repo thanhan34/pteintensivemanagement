@@ -20,6 +20,7 @@ export default function Students() {
 
   const isAdmin = session?.user?.role === 'admin';
   const isAssistant = session?.user?.role === 'administrative_assistant';
+  const isSaler = session?.user?.role === 'saler';
 
   // Fetch settings
   useEffect(() => {
@@ -37,9 +38,9 @@ export default function Students() {
     fetchSettings();
   }, []);
 
-  // Fetch students for admin and administrative assistant users
+  // Fetch students for admin, administrative assistant, and saler users
   const fetchStudents = useCallback(async () => {
-    if (!isAdmin && !isAssistant) {
+    if (!isAdmin && !isAssistant && !isSaler) {
       setLoading(false);
       return;
     }
@@ -58,15 +59,15 @@ export default function Students() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, isAssistant]);
+  }, [isAdmin, isAssistant, isSaler]);
 
   useEffect(() => {
-    if (status === 'authenticated' && (isAdmin || isAssistant)) {
+    if (status === 'authenticated' && (isAdmin || isAssistant || isSaler)) {
       fetchStudents();
     } else {
       setLoading(false);
     }
-  }, [status, isAdmin, isAssistant, fetchStudents]);
+  }, [status, isAdmin, isAssistant, isSaler, fetchStudents]);
 
   const handleAddStudent = async (formData: StudentFormData) => {
     try {
@@ -76,7 +77,7 @@ export default function Students() {
         updatedAt: new Date().toISOString()
       });
 
-      if (isAdmin || isAssistant) {
+      if (isAdmin || isAssistant || isSaler) {
         const newStudent: Student = {
           ...formData,
           id: docRef.id,
@@ -91,7 +92,7 @@ export default function Students() {
   };
 
   const handleUpdateStudent = async (formData: StudentFormData) => {
-    if (!editingStudent || !isAdmin) return;
+    if (!editingStudent || (!isAdmin && !isAssistant && !isSaler)) return;
 
     try {
       const studentRef = doc(db, 'students', editingStudent.id);
@@ -131,13 +132,13 @@ export default function Students() {
   };
 
   const handleEditStudent = (student: Student) => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isAssistant && !isSaler) return;
     setEditingStudent(student);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancelEdit = () => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isAssistant && !isSaler) return;
     setEditingStudent(null);
   };
 
@@ -157,7 +158,7 @@ export default function Students() {
     );
   }
 
-  if (!isAdmin && !isAssistant) {
+  if (!isAdmin && !isAssistant && !isSaler) {
     return (
       <div className="min-h-screen bg-[#fff5ef] flex items-center justify-center">
         <div className="text-xl text-red-500">You do not have permission to access this page</div>
@@ -172,9 +173,9 @@ export default function Students() {
           {/* Form Section */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-[#fc5d01] mb-4">
-              {isAdmin && editingStudent ? 'Edit Student' : 'Add New Student'}
+              {editingStudent ? 'Edit Student' : 'Add New Student'}
             </h1>
-            {isAdmin && editingStudent && (
+            {editingStudent && (
               <button
                 onClick={handleCancelEdit}
                 className="mb-4 px-4 py-2 bg-[#ffac7b] text-white rounded hover:bg-[#fd7f33]"
@@ -188,8 +189,8 @@ export default function Students() {
             />
           </div>
 
-          {/* Student List Section - For Admin and Administrative Assistant */}
-          {(isAdmin || isAssistant) && !showSuccessMessage && (
+          {/* Student List Section - For Admin, Administrative Assistant, and Saler */}
+          {(isAdmin || isAssistant || isSaler) && !showSuccessMessage && (
             <div>
               <h2 className="text-2xl font-bold text-[#fc5d01] mb-4">Student List</h2>
               {error ? (
