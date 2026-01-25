@@ -24,6 +24,10 @@ export default function AttendanceList() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
 
+  // Photo modal state
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+
   // Date range state
   const [startDate, setStartDate] = useState(settings.attendance.defaultFromDate);
   const [endDate, setEndDate] = useState(settings.attendance.defaultToDate);
@@ -43,34 +47,35 @@ export default function AttendanceList() {
     setEndDate(settings.attendance.defaultToDate);
   }, [settings]);
 
-  // Fetch all trainers for admin filter
+  // Fetch all users for admin filter (not just trainers)
   const setupTrainersListener = useCallback(() => {
     if (!isAdmin && !isAdminAssistant) return;
     
     try {
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('role', '==', 'trainer'));
+      // Get all users who can have attendance (trainer, saler, administrative_assistant)
+      const q = query(usersRef, where('role', 'in', ['trainer', 'saler', 'administrative_assistant']));
       return onSnapshot(q, (querySnapshot) => {
-        const trainersData = querySnapshot.docs.map(doc => ({
+        const usersData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as User[];
         
-        setTrainers(trainersData);
+        setTrainers(usersData);
         
-        // Create trainer names map
+        // Create user names map
         const namesMap: { [key: string]: string } = {};
-        trainersData.forEach(trainer => {
-          namesMap[trainer.id] = trainer.name;
+        usersData.forEach(user => {
+          namesMap[user.id] = user.name;
         });
         setTrainerNames(namesMap);
       }, (err) => {
-        console.error('Error fetching trainers:', err);
-        setError('Failed to fetch trainers');
+        console.error('Error fetching users:', err);
+        setError('Failed to fetch users');
       });
     } catch (err) {
-      console.error('Error setting up trainers listener:', err);
-      setError('Failed to setup trainers listener');
+      console.error('Error setting up users listener:', err);
+      setError('Failed to setup users listener');
       return undefined;
     }
   }, [isAdmin, isAdminAssistant]);
@@ -367,6 +372,39 @@ export default function AttendanceList() {
     setIsFullscreen(!isFullscreen);
   };
 
+  const handleViewPhotos = (record: AttendanceRecord) => {
+    setSelectedRecord(record);
+    setIsPhotoModalOpen(true);
+  };
+
+  // Calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in kilometers
+  };
+
+  // Check if locations are different (more than 100 meters apart)
+  const areLocationsDifferent = (record: AttendanceRecord): boolean => {
+    if (!record.checkInLocation || !record.checkOutLocation) return false;
+    
+    const distance = calculateDistance(
+      record.checkInLocation.latitude,
+      record.checkInLocation.longitude,
+      record.checkOutLocation.latitude,
+      record.checkOutLocation.longitude
+    );
+    
+    // Alert if distance is more than 100 meters (0.1 km)
+    return distance > 0.1;
+  };
+
   return (
     <div className={`space-y-8 ${isFullscreen ? 'fixed inset-0 z-50 bg-white overflow-auto p-4' : 'max-w-7xl mx-auto'}`}>
       {/* Fullscreen Toggle Button */}
@@ -415,17 +453,17 @@ export default function AttendanceList() {
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700 flex items-center">
                   <span className="mr-2">👤</span>
-                  Select Trainer
+                  Select Employee
                 </label>
                 <select
                   className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#fc5d01] focus:ring-2 focus:ring-[#fc5d01] focus:ring-opacity-20 transition-all duration-200 bg-white shadow-sm"
                   value={selectedTrainerId}
                   onChange={(e) => setSelectedTrainerId(e.target.value)}
                 >
-                  <option value="">All Trainers</option>
-                  {trainers.map((trainer) => (
-                    <option key={trainer.id} value={trainer.id}>
-                      {trainer.name}
+                  <option value="">All Employees</option>
+                  {trainers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.role})
                     </option>
                   ))}
                 </select>
@@ -552,7 +590,7 @@ export default function AttendanceList() {
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                       <div className="flex items-center">
                         <span className="mr-2">👤</span>
-                        Trainer
+                        Employee
                       </div>
                     </th>
                   )}
@@ -590,6 +628,12 @@ export default function AttendanceList() {
                     <div className="flex items-center">
                       <span className="mr-2">📝</span>
                       Notes
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <span className="mr-2">📍</span>
+                      Location
                     </div>
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -693,6 +737,46 @@ export default function AttendanceList() {
                         )}
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col space-y-2">
+                        {record.checkInLocation && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-green-600 text-xs font-medium flex items-center">
+                              📍 Check-in
+                            </span>
+                          </div>
+                        )}
+                        {record.checkOutLocation && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-red-600 text-xs font-medium flex items-center">
+                              📍 Check-out
+                            </span>
+                          </div>
+                        )}
+                        {areLocationsDifferent(record) && (
+                          <div className="flex items-center space-x-1 bg-red-100 border border-red-300 rounded px-2 py-1">
+                            <span className="text-red-700 text-xs font-bold flex items-center animate-pulse">
+                              ⚠️ Different Location!
+                            </span>
+                          </div>
+                        )}
+                        {(record.checkInLocation || record.checkOutLocation) && (
+                          <button
+                            onClick={() => handleViewPhotos(record)}
+                            className={`text-xs px-3 py-1 rounded-lg hover:scale-105 transition-transform font-medium ${
+                              areLocationsDifferent(record)
+                                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                                : 'bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] text-white'
+                            }`}
+                          >
+                            🔍 View Location
+                          </button>
+                        )}
+                        {!record.checkInLocation && !record.checkOutLocation && (
+                          <span className="text-gray-400 italic text-xs">No data</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="action-buttons">
                         {(isAdmin || isAdminAssistant) && record.status === 'pending' && (
@@ -737,6 +821,163 @@ export default function AttendanceList() {
           </div>
         )}
       </div>
+
+      {/* Location Modal */}
+      {isPhotoModalOpen && selectedRecord && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-[#fc5d01] to-[#fd7f33] p-6 z-10">
+              <div className="flex justify-between items-center">
+                <h3 className="text-2xl font-bold text-white">📍 Attendance Location Details</h3>
+                <button
+                  onClick={() => {
+                    setIsPhotoModalOpen(false);
+                    setSelectedRecord(null);
+                  }}
+                  className="text-white hover:text-gray-200 text-3xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Record Info */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <h4 className="font-bold text-gray-800 mb-2">📋 Session Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-semibold text-gray-600">Date:</span>
+                    <span className="ml-2">{selectedRecord.date}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-600">Session:</span>
+                    <span className="ml-2">#{selectedRecord.sessionNumber || 1}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-600">Time:</span>
+                    <span className="ml-2">{selectedRecord.startTime} - {selectedRecord.endTime || 'In progress'}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-600">Total Hours:</span>
+                    <span className="ml-2 font-bold text-[#fc5d01]">{selectedRecord.totalHours.toFixed(1)}h</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Mismatch Warning */}
+              {areLocationsDifferent(selectedRecord) && (
+                <div className="bg-red-100 border-2 border-red-400 rounded-xl p-6 animate-pulse">
+                  <h4 className="font-bold text-red-800 mb-2 flex items-center text-lg">
+                    <span className="mr-2">⚠️</span>
+                    LOCATION MISMATCH ALERT!
+                  </h4>
+                  <p className="text-red-700 text-sm">
+                    Check-in and check-out locations are more than 100 meters apart. This may indicate the employee checked in at one location and checked out at another.
+                  </p>
+                  <div className="mt-3 text-sm text-red-600 font-semibold">
+                    Distance: {calculateDistance(
+                      selectedRecord.checkInLocation!.latitude,
+                      selectedRecord.checkInLocation!.longitude,
+                      selectedRecord.checkOutLocation!.latitude,
+                      selectedRecord.checkOutLocation!.longitude
+                    ).toFixed(2)} km
+                  </div>
+                </div>
+              )}
+
+              {/* Check-in Section */}
+              {selectedRecord.checkInLocation && (
+                <div className="bg-green-50 rounded-xl p-6 border-2 border-green-200">
+                  <h4 className="font-bold text-green-800 mb-4 flex items-center text-lg">
+                    <span className="mr-2">🟢</span>
+                    Check-In Location
+                  </h4>
+                  
+                  <div className="bg-white rounded-lg p-4 space-y-2">
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-600">Address:</span>
+                      <p className="text-gray-800 mt-1">{selectedRecord.checkInLocation.address || 'N/A'}</p>
+                    </div>
+                    <div className="text-sm grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="font-semibold text-gray-600">Latitude:</span>
+                        <p className="text-gray-800">{selectedRecord.checkInLocation.latitude.toFixed(6)}</p>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-600">Longitude:</span>
+                        <p className="text-gray-800">{selectedRecord.checkInLocation.longitude.toFixed(6)}</p>
+                      </div>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-600">Timestamp:</span>
+                      <p className="text-gray-800">
+                        {new Date(selectedRecord.checkInLocation.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedRecord.checkInLocation.latitude},${selectedRecord.checkInLocation.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+                    >
+                      🗺️ View on Google Maps
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Check-out Section */}
+              {selectedRecord.checkOutLocation && (
+                <div className="bg-red-50 rounded-xl p-6 border-2 border-red-200">
+                  <h4 className="font-bold text-red-800 mb-4 flex items-center text-lg">
+                    <span className="mr-2">🔴</span>
+                    Check-Out Location
+                  </h4>
+                  
+                  <div className="bg-white rounded-lg p-4 space-y-2">
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-600">Address:</span>
+                      <p className="text-gray-800 mt-1">{selectedRecord.checkOutLocation.address || 'N/A'}</p>
+                    </div>
+                    <div className="text-sm grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="font-semibold text-gray-600">Latitude:</span>
+                        <p className="text-gray-800">{selectedRecord.checkOutLocation.latitude.toFixed(6)}</p>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-600">Longitude:</span>
+                        <p className="text-gray-800">{selectedRecord.checkOutLocation.longitude.toFixed(6)}</p>
+                      </div>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-600">Timestamp:</span>
+                      <p className="text-gray-800">
+                        {new Date(selectedRecord.checkOutLocation.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedRecord.checkOutLocation.latitude},${selectedRecord.checkOutLocation.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+                    >
+                      🗺️ View on Google Maps
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {!selectedRecord.checkInLocation && !selectedRecord.checkOutLocation && (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">📭</div>
+                  <p className="text-gray-500">No location data available for this record.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {isEditModalOpen && editingRecord && (

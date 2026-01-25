@@ -24,6 +24,20 @@ export interface AttendanceRecord {
   createdAt?: string;
   sessionNumber?: number; // Session number for multiple check-ins per day
   activityType?: string; // Type of activity for this session
+  checkInPhoto?: string; // Photo URL captured during check-in
+  checkInLocation?: {
+    latitude: number;
+    longitude: number;
+    address?: string; // Human-readable address
+    timestamp: string; // ISO timestamp when photo was captured
+  };
+  checkOutPhoto?: string; // Photo URL captured during check-out
+  checkOutLocation?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    timestamp: string;
+  };
 }
 
 export interface TrainerStats {

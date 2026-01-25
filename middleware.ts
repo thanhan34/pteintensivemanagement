@@ -50,12 +50,12 @@ export default withAuth(
       return NextResponse.redirect(new URL('/students', req.url));
     }
 
-    // Saler can access students, tasks, and attendance (same as administrative_assistant but with phone visibility)
+    // Saler can access leads, students, tasks, and attendance
     if (role === 'saler') {
-      if (path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/attendance')) {
+      if (path.startsWith('/leads') || path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/attendance')) {
         return NextResponse.next();
       }
-      return NextResponse.redirect(new URL('/students', req.url));
+      return NextResponse.redirect(new URL('/leads', req.url));
     }
 
     // Accountance can only access accounting

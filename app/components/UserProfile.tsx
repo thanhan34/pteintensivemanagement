@@ -23,6 +23,8 @@ export default function UserProfile() {
         return 'Trainer';
       case 'accountance':
         return 'Accountance';
+      case 'saler':
+        return 'Saler';
       default:
         return role;
     }
