@@ -86,7 +86,7 @@ export default function AttendanceCheckIn() {
         );
         const data = await response.json();
         address = data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-      } catch (e) {
+      } catch {
         address = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
       }
 
