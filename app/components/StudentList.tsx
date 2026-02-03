@@ -30,6 +30,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
   const canViewPhone = isFullAdmin || isSaler; // Admin and Saler can see phone numbers
   const canEdit = isFullAdmin || isAdministrativeAssistant || isSaler; // Admin, Assistant, and Saler can edit
   const canDelete = isFullAdmin; // Only full admins can delete
+  const columnCount = canViewFees ? 8 : 7;
   
   const toggleExpanded = (studentId: string) => {
     setExpandedStudents(prev => ({
@@ -127,6 +128,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
         'Duration (months)': student.studyDuration,
         'Target Score': student.targetScore,
         'Trainer': student.trainerName,
+        'Residential Address': student.residentialAddress || '-',
         'Payment Status': student.tuitionPaymentStatus,
         'Payment Dates': paymentDates,
         'Referrer': student.referrer || '-',
@@ -302,7 +304,6 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Student</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Location</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Start Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Status</th>
                   {canViewFees && (
@@ -313,133 +314,132 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAndSortedStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-[#fff5ef] transition-colors duration-200">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{student.studentId || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                          <div className="text-sm text-gray-500">{student.trainerName}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getTypeColor(student.type)}`}>
-                        {getTypeLabel(student.type)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {canViewPhone ? student.phone : '***-***-****'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{student.province}</div>
-                      <div className="text-sm text-gray-500">{student.country || 'Vietnam'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(student.startDate)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(student.tuitionPaymentStatus)}`}>
-                        {student.tuitionPaymentStatus.charAt(0).toUpperCase() + student.tuitionPaymentStatus.slice(1)}
-                      </span>
-                    </td>
-                    {canViewFees && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#fc5d01]">
-                        {formatCurrency(student.tuitionFee)}
+                  <tbody key={student.id} className="divide-y divide-gray-200">
+                    <tr className="hover:bg-[#fff5ef] transition-colors duration-200">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{student.studentId || '-'}</div>
                       </td>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => toggleExpanded(student.id)}
-                          className="text-[#fc5d01] hover:text-[#fd7f33] p-1 rounded"
-                          title="View Details"
-                        >
-                          <svg className={`w-4 h-4 transform transition-transform ${expandedStudents[student.id] ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                        {canEdit && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                            <div className="text-sm text-gray-500">{student.trainerName}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getTypeColor(student.type)}`}>
+                          {getTypeLabel(student.type)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {canViewPhone ? student.phone : '***-***-****'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(student.startDate)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(student.tuitionPaymentStatus)}`}>
+                          {student.tuitionPaymentStatus.charAt(0).toUpperCase() + student.tuitionPaymentStatus.slice(1)}
+                        </span>
+                      </td>
+                      {canViewFees && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#fc5d01]">
+                          {formatCurrency(student.tuitionFee)}
+                        </td>
+                      )}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => onEdit(student)}
+                            onClick={() => toggleExpanded(student.id)}
                             className="text-[#fc5d01] hover:text-[#fd7f33] p-1 rounded"
-                            title="Edit"
+                            title="View Details"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <svg className={`w-4 h-4 transform transition-transform ${expandedStudents[student.id] ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => onDelete(student.id)}
-                            className="text-red-500 hover:text-red-700 p-1 rounded"
-                            title="Delete"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                          {canEdit && (
+                            <button
+                              onClick={() => onEdit(student)}
+                              className="text-[#fc5d01] hover:text-[#fd7f33] p-1 rounded"
+                              title="Edit"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => onDelete(student.id)}
+                              className="text-red-500 hover:text-red-700 p-1 rounded"
+                              title="Delete"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedStudents[student.id] && (
+                      <tr className="bg-[#fff5ef]">
+                        <td colSpan={columnCount} className="px-6 py-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                              <h5 className="font-medium text-[#fc5d01] mb-2">Personal Information</h5>
+                              <div className="space-y-2 text-sm">
+                                <div><span className="text-gray-500">DOB:</span> {student.dob ? formatDate(student.dob) : '-'}</div>
+                                <div><span className="text-gray-500">Referrer:</span> {student.referrer || '-'}</div>
+                                <div><span className="text-gray-500">Residential Address:</span> {student.residentialAddress || '-'}</div>
+                                <div><span className="text-gray-500">Province:</span> {student.province}</div>
+                                <div><span className="text-gray-500">Country:</span> {student.country || 'Vietnam'}</div>
+                                <div><span className="text-gray-500">Target Score:</span> {student.targetScore}</div>
+                                <div><span className="text-gray-500">Duration:</span> {student.studyDuration} months</div>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h5 className="font-medium text-[#fc5d01] mb-2">Payment History</h5>
+                              <div className="flex flex-wrap gap-1">
+                                {student.tuitionPaymentDates.map((date) => (
+                                  <span key={date} className="bg-[#fedac2] text-[#fc5d01] text-xs px-2 py-1 rounded">
+                                    {formatDate(date)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              {student.notes && (
+                                <>
+                                  <h5 className="font-medium text-[#fc5d01] mb-2">Notes</h5>
+                                  <p className="text-sm text-gray-700">{student.notes}</p>
+                                </>
+                              )}
+                              {student.type === 'one-on-one' && (
+                                <div className="mt-4">
+                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    student.isProcess ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {student.isProcess ? 'Processed' : 'Not Processed'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
                 ))}
               </tbody>
             </table>
           </div>
-          
-          {/* Expanded Details for Table View */}
-          {filteredAndSortedStudents.map((student) => (
-            expandedStudents[student.id] && (
-              <div key={`expanded-${student.id}`} className="px-6 py-4 border-t border-gray-200 bg-[#fff5ef]">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <h5 className="font-medium text-[#fc5d01] mb-2">Personal Information</h5>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="text-gray-500">DOB:</span> {student.dob ? formatDate(student.dob) : '-'}</div>
-                      <div><span className="text-gray-500">Referrer:</span> {student.referrer || '-'}</div>
-                      <div><span className="text-gray-500">Target Score:</span> {student.targetScore}</div>
-                      <div><span className="text-gray-500">Duration:</span> {student.studyDuration} months</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h5 className="font-medium text-[#fc5d01] mb-2">Payment History</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {student.tuitionPaymentDates.map((date) => (
-                        <span key={date} className="bg-[#fedac2] text-[#fc5d01] text-xs px-2 py-1 rounded">
-                          {formatDate(date)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    {student.notes && (
-                      <>
-                        <h5 className="font-medium text-[#fc5d01] mb-2">Notes</h5>
-                        <p className="text-sm text-gray-700">{student.notes}</p>
-                      </>
-                    )}
-                    {student.type === 'one-on-one' && (
-                      <div className="mt-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          student.isProcess ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {student.isProcess ? 'Processed' : 'Not Processed'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          ))}
         </div>
       )}
     </div>

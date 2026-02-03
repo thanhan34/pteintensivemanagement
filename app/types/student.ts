@@ -7,6 +7,7 @@ export interface Student {
   referrer: string;
   province: string; // Province/City
   country: string; // Country
+  residentialAddress?: string;
   targetScore: number;
   startDate: string;
   studyDuration: number; // in months
