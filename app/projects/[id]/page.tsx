@@ -46,6 +46,7 @@ export default function ProjectDetailPage() {
   const [showInviteMembers, setShowInviteMembers] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [searchUsers, setSearchUsers] = useState('');
+  const isAdmin = session?.user?.role === 'admin';
 
   // Load project data
   useEffect(() => {
@@ -54,7 +55,11 @@ export default function ProjectDetailPage() {
         setLoading(true);
         const [projectData, projectTasks, labelsData, usersData] = await Promise.all([
           projectService.getProject(projectId),
-          taskService.getTasksByProject(projectId),
+          taskService.getTasksByProject(projectId, {
+            viewerUserId: session.user.id,
+            viewerRole: session.user.role,
+            includeTemplates: false
+          }),
           labelService.getLabels(),
           userService.getUsers()
         ]);
@@ -89,7 +94,11 @@ export default function ProjectDetailPage() {
   const handleTaskCreated = async () => {
     setShowCreateTask(false);
     // Refresh tasks
-    const updatedTasks = await taskService.getTasksByProject(projectId);
+    const updatedTasks = await taskService.getTasksByProject(projectId, {
+      viewerUserId: session?.user?.id,
+      viewerRole: session?.user?.role,
+      includeTemplates: false
+    });
     setTasks(updatedTasks);
   };
 
@@ -100,7 +109,11 @@ export default function ProjectDetailPage() {
     try {
       await taskService.completeTask(taskId, session.user.id);
       // Refresh tasks
-      const updatedTasks = await taskService.getTasksByProject(projectId);
+      const updatedTasks = await taskService.getTasksByProject(projectId, {
+        viewerUserId: session.user.id,
+        viewerRole: session.user.role,
+        includeTemplates: false
+      });
       setTasks(updatedTasks);
     } catch (error) {
       console.error('Error completing task:', error);
@@ -112,7 +125,11 @@ export default function ProjectDetailPage() {
     try {
       await taskService.updateTask(taskId, { status: newStatus });
       // Refresh tasks
-      const updatedTasks = await taskService.getTasksByProject(projectId);
+      const updatedTasks = await taskService.getTasksByProject(projectId, {
+        viewerUserId: session?.user?.id,
+        viewerRole: session?.user?.role,
+        includeTemplates: false
+      });
       setTasks(updatedTasks);
     } catch (error) {
       console.error('Error updating task status:', error);
@@ -159,7 +176,6 @@ export default function ProjectDetailPage() {
 
   // Check if user is project owner
   const isOwner = project?.createdBy === session?.user?.id;
-  const isMember = project?.members.includes(session?.user?.id || '');
 
   if (loading) {
     return (
@@ -263,7 +279,7 @@ export default function ProjectDetailPage() {
                   <Users className="h-5 w-5 text-primary" />
                   <CardTitle className="text-lg text-primary">Team Collaboration</CardTitle>
                 </div>
-                {(isOwner || isMember) && (
+                {isAdmin && (
                   <Dialog open={showInviteMembers} onOpenChange={setShowInviteMembers}>
                     <DialogTrigger asChild>
                       <Button className="bg-primary hover:bg-primary/90" size="sm">
@@ -434,7 +450,7 @@ export default function ProjectDetailPage() {
                     <p className="text-xs text-muted-foreground mb-3">
                       Invite team members to collaborate on this project
                     </p>
-                    {(isOwner || isMember) && (
+                    {isAdmin && (
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -471,32 +487,35 @@ export default function ProjectDetailPage() {
             </Badge>
           </div>
           
-          <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 shadow-md" size="lg">
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Task
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-primary" />
-                  Create Task for {project.name}
-                </DialogTitle>
-                <DialogDescription>
-                  Add a new task to this project and assign it to team members
-                </DialogDescription>
-              </DialogHeader>
-              <TaskForm 
-                projects={[project]}
-                labels={labels}
-                onSuccess={handleTaskCreated}
-                onCancel={() => setShowCreateTask(false)}
-                initialData={{ projectId: project.id }}
-              />
-            </DialogContent>
-          </Dialog>
+          {isAdmin && (
+            <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary hover:bg-primary/90 shadow-md" size="lg">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Task
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Plus className="h-5 w-5 text-primary" />
+                    Create Task for {project.name}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Add a new task to this project and assign it to team members
+                  </DialogDescription>
+                </DialogHeader>
+                <TaskForm 
+                  projects={[project]}
+                  labels={labels}
+                  assignableUsers={users}
+                  onSuccess={handleTaskCreated}
+                  onCancel={() => setShowCreateTask(false)}
+                  initialData={{ projectId: project.id }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -531,6 +550,7 @@ export default function ProjectDetailPage() {
                   task={task}
                   projects={[project]}
                   labels={labels}
+                  users={users}
                   onStatusChange={handleStatusChange}
                   onComplete={handleCompleteTask}
                 />
@@ -544,6 +564,7 @@ export default function ProjectDetailPage() {
             tasks={tasks}
             projects={[project]}
             labels={labels}
+            users={users}
             onStatusChange={handleStatusChange}
             onComplete={handleCompleteTask}
           />

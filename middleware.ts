@@ -10,6 +10,7 @@ export default withAuth(
     // Always allow access to auth-related paths and public registration
     if (
       path.startsWith('/_next') ||
+      path.startsWith('/api') ||
       path.startsWith('/api/auth') ||
       path.startsWith('/auth') ||      
       path === '/favicon.ico'
@@ -27,6 +28,11 @@ export default withAuth(
       return NextResponse.next();
     }
 
+    // Allow all authenticated roles to access Tasks page
+    if (path.startsWith('/tasks')) {
+      return NextResponse.next();
+    }
+
     const role = token.role as UserRole;
 
     // Admin has access to everything
@@ -36,7 +42,7 @@ export default withAuth(
 
     // Trainer can access attendance and tasks
     if (role === 'trainer') {
-      if (path.startsWith('/attendance') || path.startsWith('/tasks') || path.startsWith('/projects')) {
+      if (path.startsWith('/attendance') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/settings')) {
         return NextResponse.next();
       }
       return NextResponse.redirect(new URL('/attendance', req.url));
@@ -44,7 +50,7 @@ export default withAuth(
 
     // Administrative assistant can access students, tasks, and attendance
     if (role === 'administrative_assistant') {
-      if (path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/attendance')) {
+      if (path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/attendance') || path.startsWith('/settings')) {
         return NextResponse.next();
       }
       return NextResponse.redirect(new URL('/students', req.url));
@@ -52,7 +58,7 @@ export default withAuth(
 
     // Saler can access leads, students, tasks, and attendance
     if (role === 'saler') {
-      if (path.startsWith('/leads') || path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/attendance')) {
+      if (path.startsWith('/leads') || path.startsWith('/students') || path.startsWith('/tasks') || path.startsWith('/projects') || path.startsWith('/attendance') || path.startsWith('/settings')) {
         return NextResponse.next();
       }
       return NextResponse.redirect(new URL('/leads', req.url));

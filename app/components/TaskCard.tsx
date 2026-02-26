@@ -10,7 +10,8 @@ import {
   Circle, 
   Calendar,
   AlertTriangle,
-  MoreHorizontal
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -19,13 +20,43 @@ interface TaskCardProps {
   task: Task;
   projects: Project[];
   labels: Label[];
+  users?: Array<{
+    id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  }>;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onComplete: (taskId: string) => void;
+  canManage?: boolean;
+  onEdit?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
 }
 
-export default function TaskCard({ task, projects, labels, onStatusChange, onComplete }: TaskCardProps) {
+export default function TaskCard({
+  task,
+  projects,
+  labels,
+  users = [],
+  onStatusChange,
+  onComplete,
+  canManage = false,
+  onEdit,
+  onDelete
+}: TaskCardProps) {
   const project = projects.find(p => p.id === task.projectId);
   const taskLabels = labels.filter(l => task.labels.includes(l.id));
+  const assignedNames = task.assignedTo.map((assignee) => {
+    const matchedUser = users.find(
+      (u) => u.id === assignee || (u.email && u.email === assignee)
+    );
+
+    if (matchedUser) {
+      return matchedUser.name || matchedUser.email || assignee;
+    }
+
+    return assignee;
+  });
   const isOverdue = task.status !== 'done' && isPast(task.dueDate);
 
   const getPriorityColor = (priority: string) => {
@@ -137,7 +168,7 @@ export default function TaskCard({ task, projects, labels, onStatusChange, onCom
               {/* Assigned to */}
               {task.assignedTo.length > 0 && (
                 <div className="flex items-center gap-1">
-                  <span>Assigned to {task.assignedTo.length} member{task.assignedTo.length > 1 ? 's' : ''}</span>
+                  <span>{assignedNames.join(', ')}</span>
                 </div>
               )}
             </div>
@@ -178,9 +209,28 @@ export default function TaskCard({ task, projects, labels, onStatusChange, onCom
                task.status === 'done' ? 'Completed' : 'To Do'}
             </Badge>
             
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <MoreHorizontal className="h-3 w-3" />
-            </Button>
+            {canManage && (
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => onEdit?.(task)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                  onClick={() => onDelete?.(task)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

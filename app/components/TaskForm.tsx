@@ -21,14 +21,35 @@ import { cn } from '@/lib/utils';
 interface TaskFormProps {
   projects: Project[];
   labels: Label[];
+  showProjectField?: boolean;
+  assignableUsers?: Array<{
+    id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  }>;
   onSuccess: () => void;
   onCancel: () => void;
   initialData?: Partial<CreateTaskData>;
+  onSubmitTask?: (taskData: CreateTaskData) => Promise<void>;
+  submitLabel?: string;
 }
 
-export default function TaskForm({ projects, labels, onSuccess, onCancel, initialData }: TaskFormProps) {
+export default function TaskForm({
+  projects,
+  labels,
+  showProjectField = true,
+  assignableUsers = [],
+  onSuccess,
+  onCancel,
+  initialData,
+  onSubmitTask,
+  submitLabel
+}: TaskFormProps) {
+  const isEditMode = Boolean(onSubmitTask);
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
+  const [bulkTitles, setBulkTitles] = useState('');
   const [formData, setFormData] = useState<CreateTaskData>({
     title: initialData?.title || '',
     description: initialData?.description || '',
@@ -61,10 +82,59 @@ export default function TaskForm({ projects, labels, onSuccess, onCancel, initia
 
     setLoading(true);
     try {
-      await taskService.createTask({
+      const parsedBulkTitles = bulkTitles
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      const titlesToCreate = parsedBulkTitles.length > 0
+        ? parsedBulkTitles
+        : [formData.title.trim()].filter(Boolean);
+
+      if (titlesToCreate.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const assignees = formData.assignedTo.length > 0
+        ? formData.assignedTo
+        : session?.user?.id
+          ? [session.user.id]
+          : [];
+
+      const basePayload: CreateTaskData = {
         ...formData,
+        assignedTo: assignees,
         labels: selectedLabels
-      }, session.user.id);
+      };
+
+      if (onSubmitTask) {
+        if (titlesToCreate.length > 1) {
+          throw new Error('Editing task only supports a single title.');
+        }
+
+        await onSubmitTask({
+          ...basePayload,
+          title: titlesToCreate[0]
+        });
+      } else {
+        if (!session?.user?.id) {
+          setLoading(false);
+          return;
+        }
+
+        await Promise.all(
+          titlesToCreate.map((title) =>
+            taskService.createTask(
+              {
+                ...basePayload,
+                title
+              },
+              session.user.id
+            )
+          )
+        );
+      }
       onSuccess();
     } catch (error) {
       console.error('Error creating task:', error);
@@ -111,6 +181,60 @@ export default function TaskForm({ projects, labels, onSuccess, onCancel, initia
           placeholder="Enter task title..."
           required
         />
+        <p className="text-xs text-muted-foreground">
+          {isEditMode
+            ? 'Cập nhật thông tin task hiện tại'
+            : 'Hoặc dùng mục bên dưới để tạo nhiều task cùng lúc (mỗi dòng một task)'}
+        </p>
+      </div>
+
+      {!isEditMode && (
+        <div className="space-y-2">
+          <UILabel htmlFor="bulkTitles">Quick Create Multiple Tasks (Optional)</UILabel>
+          <Textarea
+            id="bulkTitles"
+            value={bulkTitles}
+            onChange={(e) => setBulkTitles(e.target.value)}
+            placeholder={"Nhập nhiều task, mỗi dòng 1 task...\nGọi học viên A\nSoạn tài liệu lớp sáng\nKiểm tra attendance"}
+            rows={4}
+          />
+        </div>
+      )}
+
+      {/* Assignees */}
+      <div className="space-y-2">
+        <UILabel>Assign To</UILabel>
+        {assignableUsers.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No users available. Task will be assigned to you by default.</p>
+        ) : (
+          <div className="max-h-44 overflow-y-auto rounded-md border p-2 space-y-2">
+            {assignableUsers.map((user) => {
+              const isChecked = formData.assignedTo.includes(user.id);
+              return (
+                <label key={user.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{user.name || user.email || user.id}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setFormData((prev) => ({
+                        ...prev,
+                        assignedTo: checked
+                          ? [...prev.assignedTo, user.id]
+                          : prev.assignedTo.filter((id) => id !== user.id)
+                      }));
+                    }}
+                    className="h-4 w-4"
+                  />
+                </label>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Description */}
@@ -204,129 +328,130 @@ export default function TaskForm({ projects, labels, onSuccess, onCancel, initia
         </div>
       </div>
 
-      {/* Project */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <UILabel>Project</UILabel>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowCreateProject(!showCreateProject)}
-            className="text-xs h-6"
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            New Project
-          </Button>
-        </div>
-        
-        {showCreateProject ? (
-          <div className="space-y-3 p-3 border rounded-md bg-muted/50">
-            <div className="space-y-2">
-              <UILabel className="text-xs">Project Name *</UILabel>
-              <Input
-                value={newProjectData.name}
-                onChange={(e) => setNewProjectData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter project name..."
-                className="h-8 text-sm"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <UILabel className="text-xs">Description</UILabel>
-              <Input
-                value={newProjectData.description}
-                onChange={(e) => setNewProjectData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Project description..."
-                className="h-8 text-sm"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <UILabel className="text-xs">Color</UILabel>
-              <div className="flex gap-1">
-                {['#fc5d01', '#fd7f33', '#ffac7b', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={cn(
-                      "w-6 h-6 rounded-full border-2 transition-all",
-                      newProjectData.color === color ? "border-gray-400 scale-110" : "border-gray-200 hover:scale-105"
-                    )}
-                    style={{ backgroundColor: color }}
-                    onClick={() => setNewProjectData(prev => ({ ...prev, color }))}
-                  />
-                ))}
+      {showProjectField && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <UILabel>Project</UILabel>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCreateProject(!showCreateProject)}
+              className="text-xs h-6"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              New Project
+            </Button>
+          </div>
+          
+          {showCreateProject ? (
+            <div className="space-y-3 p-3 border rounded-md bg-muted/50">
+              <div className="space-y-2">
+                <UILabel className="text-xs">Project Name *</UILabel>
+                <Input
+                  value={newProjectData.name}
+                  onChange={(e) => setNewProjectData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter project name..."
+                  className="h-8 text-sm"
+                />
               </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={async () => {
-                  if (!session?.user?.id || !newProjectData.name.trim()) return;
-                  try {
-                    const projectId = await projectService.createProject(newProjectData, session.user.id);
-                    const newProject: Project = {
-                      id: projectId,
-                      ...newProjectData,
-                      createdBy: session.user.id,
-                      createdAt: new Date(),
-                      updatedAt: new Date()
-                    };
-                    setAvailableProjects(prev => [...prev, newProject]);
-                    setFormData(prev => ({ ...prev, projectId }));
+              
+              <div className="space-y-2">
+                <UILabel className="text-xs">Description</UILabel>
+                <Input
+                  value={newProjectData.description}
+                  onChange={(e) => setNewProjectData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Project description..."
+                  className="h-8 text-sm"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <UILabel className="text-xs">Color</UILabel>
+                <div className="flex gap-1">
+                  {['#fc5d01', '#fd7f33', '#ffac7b', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={cn(
+                        "w-6 h-6 rounded-full border-2 transition-all",
+                        newProjectData.color === color ? "border-gray-400 scale-110" : "border-gray-200 hover:scale-105"
+                      )}
+                      style={{ backgroundColor: color }}
+                      onClick={() => setNewProjectData(prev => ({ ...prev, color }))}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={async () => {
+                    if (!session?.user?.id || !newProjectData.name.trim()) return;
+                    try {
+                      const projectId = await projectService.createProject(newProjectData, session.user.id);
+                      const newProject: Project = {
+                        id: projectId,
+                        ...newProjectData,
+                        createdBy: session.user.id,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                      };
+                      setAvailableProjects(prev => [...prev, newProject]);
+                      setFormData(prev => ({ ...prev, projectId }));
+                      setShowCreateProject(false);
+                      setNewProjectData({ name: '', description: '', color: '#fc5d01', members: [] });
+                    } catch (error) {
+                      console.error('Error creating project:', error);
+                    }
+                  }}
+                  disabled={!newProjectData.name.trim()}
+                  className="bg-primary hover:bg-primary/90 h-7 text-xs"
+                >
+                  Create
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
                     setShowCreateProject(false);
                     setNewProjectData({ name: '', description: '', color: '#fc5d01', members: [] });
-                  } catch (error) {
-                    console.error('Error creating project:', error);
-                  }
-                }}
-                disabled={!newProjectData.name.trim()}
-                className="bg-primary hover:bg-primary/90 h-7 text-xs"
-              >
-                Create
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowCreateProject(false);
-                  setNewProjectData({ name: '', description: '', color: '#fc5d01', members: [] });
-                }}
-                className="h-7 text-xs"
-              >
-                Cancel
-              </Button>
+                  }}
+                  className="h-7 text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <Select
-            value={formData.projectId || "none"}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, projectId: value === "none" ? "" : value }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a project (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No Project</SelectItem>
-              {availableProjects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: project.color }}
-                    />
-                    {project.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+          ) : (
+            <Select
+              value={formData.projectId || "none"}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, projectId: value === "none" ? "" : value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a project (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Project</SelectItem>
+                {availableProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: project.color }}
+                      />
+                      {project.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
 
       {/* Labels */}
       <div className="space-y-2">
@@ -481,10 +606,12 @@ export default function TaskForm({ projects, labels, onSuccess, onCancel, initia
         </Button>
         <Button
           type="submit"
-          disabled={loading || !formData.title.trim()}
+          disabled={loading || (!formData.title.trim() && !isEditMode && !bulkTitles.trim())}
           className="bg-primary hover:bg-primary/90"
         >
-          {loading ? 'Creating...' : 'Create Task'}
+          {loading
+            ? (onSubmitTask ? 'Saving...' : 'Creating...')
+            : (submitLabel || (bulkTitles.trim() ? 'Create Multiple Tasks' : 'Create Task'))}
         </Button>
       </div>
     </form>

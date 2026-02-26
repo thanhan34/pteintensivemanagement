@@ -12,7 +12,8 @@ import {
   Clock, 
   Calendar,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  User
 } from 'lucide-react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,12 @@ interface KanbanBoardProps {
   tasks: Task[];
   projects: Project[];
   labels: Label[];
+  users?: Array<{
+    id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  }>;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onComplete: (taskId: string) => void;
 }
@@ -29,13 +36,31 @@ interface KanbanTaskCardProps {
   task: Task;
   projects: Project[];
   labels: Label[];
+  users?: Array<{
+    id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  }>;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onComplete: (taskId: string) => void;
 }
 
-function KanbanTaskCard({ task, projects, labels }: KanbanTaskCardProps) {
+function KanbanTaskCard({ task, projects, labels, users = [] }: KanbanTaskCardProps) {
   const project = projects.find(p => p.id === task.projectId);
   const taskLabels = labels.filter(l => task.labels.includes(l.id));
+  const assignedNames = task.assignedTo.map((assignee) => {
+    const matchedUser = users.find(
+      (u) => u.id === assignee || (u.email && u.email === assignee)
+    );
+
+    if (matchedUser) {
+      return matchedUser.name || matchedUser.email || assignee;
+    }
+
+    // Fallback to raw value instead of generic text
+    return assignee;
+  });
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -139,13 +164,23 @@ function KanbanTaskCard({ task, projects, labels }: KanbanTaskCardProps) {
               )}
             </div>
           )}
+
+          {/* Assignees */}
+          {task.assignedTo.length > 0 && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <User className="h-3 w-3" />
+              <span className="truncate">
+                {assignedNames.join(', ')}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-export default function KanbanBoard({ tasks, projects, labels, onStatusChange, onComplete }: KanbanBoardProps) {
+export default function KanbanBoard({ tasks, projects, labels, users = [], onStatusChange, onComplete }: KanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   // Define columns
@@ -257,6 +292,7 @@ export default function KanbanBoard({ tasks, projects, labels, onStatusChange, o
                     task={task}
                     projects={projects}
                     labels={labels}
+                    users={users}
                     onStatusChange={onStatusChange}
                     onComplete={onComplete}
                   />

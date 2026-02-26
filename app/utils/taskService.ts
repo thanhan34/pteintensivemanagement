@@ -26,6 +26,8 @@ import {
   TaskStatus
 } from '../types/task';
 
+const ADMIN_ROLE = 'admin';
+
 // Collections
 const TASKS_COLLECTION = 'tasks';
 const PROJECTS_COLLECTION = 'projects';
@@ -48,15 +50,109 @@ const dateToTimestamp = (date: Date): Timestamp => {
   return Timestamp.fromDate(date);
 };
 
+const toDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const canPerformTaskCleanup = (viewerRole?: string): boolean => {
+  // Only admin (or system calls without viewer role) should execute destructive cleanup
+  return !viewerRole || viewerRole === ADMIN_ROLE;
+};
+
+const isDoneTaskExpired = (task: Task, todayKey: string): boolean => {
+  if (task.status !== 'done') return false;
+
+  const completedDate = task.completedAt ?? task.updatedAt ?? task.createdAt;
+  return toDateKey(completedDate) < todayKey;
+};
+
+const parseTaskFromDoc = (docData: { id: string; data: () => Record<string, unknown> }): Task => {
+  const data = docData.data();
+  return {
+    id: docData.id,
+    ...data,
+    dueDate: timestampToDate(data.dueDate as Timestamp),
+    reminderTime: data.reminderTime ? timestampToDate(data.reminderTime as Timestamp) : undefined,
+    completedAt: data.completedAt ? timestampToDate(data.completedAt as Timestamp) : undefined,
+    createdAt: timestampToDate(data.createdAt as Timestamp),
+    updatedAt: timestampToDate(data.updatedAt as Timestamp)
+  } as Task;
+};
+
+const canViewTask = (task: Task, viewerUserId?: string, viewerRole?: string): boolean => {
+  if (!viewerUserId) return true;
+  if (viewerRole === ADMIN_ROLE) return true;
+  return task.assignedTo.includes(viewerUserId) || task.createdBy === viewerUserId;
+};
+
+const applyTaskFilters = (tasks: Task[], filter?: TaskFilter): Task[] => {
+  let filtered = [...tasks];
+
+  if (!filter?.includeTemplates) {
+    filtered = filtered.filter(task => !task.isTemplate);
+  }
+
+  filtered = filtered.filter(task => canViewTask(task, filter?.viewerUserId, filter?.viewerRole));
+
+  if (filter?.status?.length) {
+    filtered = filtered.filter(task => filter.status?.includes(task.status));
+  }
+
+  if (filter?.priority?.length) {
+    filtered = filtered.filter(task => filter.priority?.includes(task.priority));
+  }
+
+  if (filter?.assignedTo?.length) {
+    filtered = filtered.filter(task => task.assignedTo.some(userId => filter.assignedTo?.includes(userId)));
+  }
+
+  if (filter?.projectId) {
+    filtered = filtered.filter(task => task.projectId === filter.projectId);
+  }
+
+  if (filter?.labels?.length) {
+    filtered = filtered.filter(task => task.labels.some(labelId => filter.labels?.includes(labelId)));
+  }
+
+  if (filter?.today) {
+    const todayKey = toDateKey(new Date());
+    filtered = filtered.filter(task => toDateKey(new Date(task.dueDate)) === todayKey);
+  }
+
+  if (filter?.overdue) {
+    const now = new Date();
+    filtered = filtered.filter(task => task.status !== 'done' && new Date(task.dueDate) < now);
+  }
+
+  if (filter?.dueDate?.from) {
+    filtered = filtered.filter(task => new Date(task.dueDate) >= filter.dueDate!.from!);
+  }
+
+  if (filter?.dueDate?.to) {
+    filtered = filtered.filter(task => new Date(task.dueDate) <= filter.dueDate!.to!);
+  }
+
+  return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+};
+
 // Task Services
 export const taskService = {
   // Create a new task
   async createTask(taskData: CreateTaskData, userId: string): Promise<string> {
     try {
+      const taskCategory = taskData.isRecurring && taskData.recurringPattern === 'daily'
+        ? 'recurring_daily'
+        : 'ad_hoc';
+
       const docRef = await addDoc(collection(db, TASKS_COLLECTION), {
         ...taskData,
         createdBy: userId,
         status: 'todo' as TaskStatus,
+        taskCategory,
+        isTemplate: taskData.isRecurring && taskData.recurringPattern === 'daily',
         dueDate: dateToTimestamp(taskData.dueDate),
         reminderTime: taskData.reminderTime ? dateToTimestamp(taskData.reminderTime) : null,
         completedAt: null,
@@ -73,42 +169,101 @@ export const taskService = {
   // Get all tasks with optional filtering
   async getTasks(filter?: TaskFilter): Promise<Task[]> {
     try {
-      let q = query(collection(db, TASKS_COLLECTION), orderBy('createdAt', 'desc'));
-      
-      // Apply filters
-      if (filter?.status && filter.status.length > 0) {
-        q = query(q, where('status', 'in', filter.status));
-      }
-      
-      if (filter?.priority && filter.priority.length > 0) {
-        q = query(q, where('priority', 'in', filter.priority));
-      }
-      
-      if (filter?.assignedTo && filter.assignedTo.length > 0) {
-        q = query(q, where('assignedTo', 'array-contains-any', filter.assignedTo));
-      }
-      
-      if (filter?.projectId) {
-        q = query(q, where('projectId', '==', filter.projectId));
-      }
-
+      const q = query(collection(db, TASKS_COLLECTION), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      const tasks: Task[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        tasks.push({
-          id: doc.id,
-          ...data,
-          dueDate: timestampToDate(data.dueDate),
-          reminderTime: data.reminderTime ? timestampToDate(data.reminderTime) : undefined,
-          completedAt: data.completedAt ? timestampToDate(data.completedAt) : undefined,
-          createdAt: timestampToDate(data.createdAt),
-          updatedAt: timestampToDate(data.updatedAt)
-        } as Task);
-      });
+      const allTasks = querySnapshot.docs.map((doc) => parseTaskFromDoc(doc));
 
-      return tasks;
+      const now = new Date();
+      const todayKey = toDateKey(now);
+
+      const expiredDoneTasks = allTasks.filter(task => isDoneTaskExpired(task, todayKey));
+
+      if (expiredDoneTasks.length > 0 && canPerformTaskCleanup(filter?.viewerRole)) {
+        try {
+          const cleanupBatch = writeBatch(db);
+
+          expiredDoneTasks.forEach((task) => {
+            cleanupBatch.delete(doc(db, TASKS_COLLECTION, task.id));
+          });
+
+          await cleanupBatch.commit();
+        } catch (cleanupError) {
+          console.error('Error cleaning up expired done tasks:', cleanupError);
+        }
+      }
+
+      const activeTasks = allTasks.filter(task => !isDoneTaskExpired(task, todayKey));
+
+      // Auto-generate daily task instances from recurring templates
+      const recurringTemplates = activeTasks.filter(
+        task => task.isTemplate && task.isRecurring && task.recurringPattern === 'daily'
+      );
+
+      const missingInstances = recurringTemplates.filter(template => {
+        return !activeTasks.some(task =>
+          task.sourceRecurringTaskId === template.id && task.recurrenceDateKey === todayKey
+        );
+      });
+      const generatedTasks: Task[] = [];
+
+      for (const template of missingInstances) {
+        const templateDueDate = new Date(template.dueDate);
+        const instanceDueDate = new Date(now);
+        instanceDueDate.setHours(
+          templateDueDate.getHours(),
+          templateDueDate.getMinutes(),
+          templateDueDate.getSeconds(),
+          0
+        );
+
+        const payload = {
+          title: template.title,
+          description: template.description,
+          dueDate: dateToTimestamp(instanceDueDate),
+          priority: template.priority,
+          status: 'todo' as TaskStatus,
+          createdBy: template.createdBy,
+          assignedTo: template.assignedTo,
+          projectId: template.projectId || null,
+          labels: template.labels,
+          isRecurring: false,
+          recurringPattern: template.recurringPattern,
+          reminderTime: template.reminderTime ? dateToTimestamp(template.reminderTime) : null,
+          completedAt: null,
+          sourceRecurringTaskId: template.id,
+          recurrenceDateKey: todayKey,
+          isTemplate: false,
+          taskCategory: 'recurring_daily',
+          createdAt: dateToTimestamp(now),
+          updatedAt: dateToTimestamp(now)
+        };
+
+        const createdDoc = await addDoc(collection(db, TASKS_COLLECTION), payload);
+        generatedTasks.push({
+          id: createdDoc.id,
+          title: payload.title,
+          description: payload.description,
+          dueDate: instanceDueDate,
+          priority: payload.priority,
+          status: payload.status,
+          createdBy: payload.createdBy,
+          assignedTo: payload.assignedTo,
+          projectId: template.projectId,
+          labels: payload.labels,
+          isRecurring: payload.isRecurring,
+          recurringPattern: template.recurringPattern,
+          reminderTime: template.reminderTime,
+          completedAt: undefined,
+          sourceRecurringTaskId: payload.sourceRecurringTaskId,
+          recurrenceDateKey: payload.recurrenceDateKey,
+          isTemplate: false,
+          taskCategory: payload.taskCategory,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+
+      return applyTaskFilters([...activeTasks, ...generatedTasks], filter);
     } catch (error) {
       console.error('Error getting tasks:', error);
       throw error;
@@ -117,66 +272,19 @@ export const taskService = {
 
   // Get tasks assigned to a specific user
   async getUserTasks(userId: string): Promise<Task[]> {
-    try {
-      const q = query(
-        collection(db, TASKS_COLLECTION),
-        where('assignedTo', 'array-contains', userId),
-        orderBy('dueDate', 'asc')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const tasks: Task[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        tasks.push({
-          id: doc.id,
-          ...data,
-          dueDate: timestampToDate(data.dueDate),
-          reminderTime: data.reminderTime ? timestampToDate(data.reminderTime) : undefined,
-          completedAt: data.completedAt ? timestampToDate(data.completedAt) : undefined,
-          createdAt: timestampToDate(data.createdAt),
-          updatedAt: timestampToDate(data.updatedAt)
-        } as Task);
-      });
-
-      return tasks;
-    } catch (error) {
-      console.error('Error getting user tasks:', error);
-      throw error;
-    }
+    return this.getTasks({
+      assignedTo: [userId],
+      viewerUserId: userId,
+      viewerRole: 'trainer'
+    });
   },
 
   // Get tasks by project
-  async getTasksByProject(projectId: string): Promise<Task[]> {
-    try {
-      const q = query(
-        collection(db, TASKS_COLLECTION),
-        where('projectId', '==', projectId),
-        orderBy('createdAt', 'desc')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const tasks: Task[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        tasks.push({
-          id: doc.id,
-          ...data,
-          dueDate: timestampToDate(data.dueDate),
-          reminderTime: data.reminderTime ? timestampToDate(data.reminderTime) : undefined,
-          completedAt: data.completedAt ? timestampToDate(data.completedAt) : undefined,
-          createdAt: timestampToDate(data.createdAt),
-          updatedAt: timestampToDate(data.updatedAt)
-        } as Task);
-      });
-
-      return tasks;
-    } catch (error) {
-      console.error('Error getting tasks by project:', error);
-      throw error;
-    }
+  async getTasksByProject(projectId: string, filter?: Omit<TaskFilter, 'projectId'>): Promise<Task[]> {
+    return this.getTasks({
+      ...filter,
+      projectId
+    });
   },
 
   // Update task

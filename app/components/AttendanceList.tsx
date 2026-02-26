@@ -6,6 +6,7 @@ import { collection, query, doc, where, getDoc, updateDoc, onSnapshot, deleteDoc
 import { useSession } from 'next-auth/react';
 import { AttendanceRecord, User } from '../types/roles';
 import { useSettings } from '../hooks/useSettings';
+import { getDateStringInTimezone } from '../utils/dateTime';
 import * as XLSX from 'xlsx';
 
 export default function AttendanceList() {
@@ -212,7 +213,7 @@ export default function AttendanceList() {
     }
 
     // Check if the record is from today (only allow editing records from today)
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateStringInTimezone();
     const recordDate = record.date;
     
     if (recordDate !== today && !isAdmin) {

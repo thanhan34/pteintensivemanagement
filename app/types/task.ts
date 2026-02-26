@@ -17,6 +17,10 @@ export interface Task {
   recurringPattern?: RecurringPattern;
   reminderTime?: Date;
   completedAt?: Date;
+  sourceRecurringTaskId?: string;
+  recurrenceDateKey?: string;
+  isTemplate?: boolean;
+  taskCategory?: 'recurring_daily' | 'ad_hoc';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +74,8 @@ export interface TaskFilter {
   status?: TaskStatus[];
   priority?: TaskPriority[];
   assignedTo?: string[];
+  viewerUserId?: string;
+  viewerRole?: string;
   projectId?: string;
   labels?: string[];
   dueDate?: {
@@ -79,6 +85,7 @@ export interface TaskFilter {
   overdue?: boolean;
   today?: boolean;
   next7days?: boolean;
+  includeTemplates?: boolean;
 }
 
 export interface KanbanColumn {

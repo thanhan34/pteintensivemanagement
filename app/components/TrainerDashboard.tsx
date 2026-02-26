@@ -5,6 +5,7 @@ import { db } from '../config/firebase';
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { AttendanceRecord } from '../types/roles';
+import { getDateStringInTimezone, getTimeHHmmInTimezone } from '../utils/dateTime';
 
 export default function TrainerDashboard() {
   const { data: session } = useSession();
@@ -41,7 +42,7 @@ export default function TrainerDashboard() {
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateStringInTimezone();
     const attendanceRef = collection(db, 'attendance');
     const q = query(
       attendanceRef,
@@ -117,8 +118,8 @@ export default function TrainerDashboard() {
 
     try {
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
-      const currentTime = now.toLocaleTimeString('en-US', { hour12: false }).slice(0, 5);
+      const today = getDateStringInTimezone(now);
+      const currentTime = getTimeHHmmInTimezone(now);
       const sessionNumber = getNextSessionNumber();
 
       const attendanceData = {
@@ -163,7 +164,7 @@ export default function TrainerDashboard() {
 
     try {
       const now = new Date();
-      const currentTime = now.toLocaleTimeString('en-US', { hour12: false }).slice(0, 5);
+      const currentTime = getTimeHHmmInTimezone(now);
       
       const startDateTime = new Date(`${currentSession.date} ${currentSession.startTime}`);
       const endDateTime = new Date(`${currentSession.date} ${currentTime}`);
