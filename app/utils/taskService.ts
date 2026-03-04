@@ -257,7 +257,7 @@ export const taskService = {
           sourceRecurringTaskId: payload.sourceRecurringTaskId,
           recurrenceDateKey: payload.recurrenceDateKey,
           isTemplate: false,
-          taskCategory: payload.taskCategory,
+          taskCategory: 'recurring_daily',
           createdAt: now,
           updatedAt: now
         });
