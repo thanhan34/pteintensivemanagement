@@ -50,14 +50,21 @@ export default function ProjectDetailPage() {
 
   // Load project data
   useEffect(() => {
+    if (!session?.user?.id || !projectId) {
+      return;
+    }
+
+    const viewerUserId = session.user.id;
+    const viewerRole = session.user.role;
+
     const loadProjectData = async () => {
       try {
         setLoading(true);
         const [projectData, projectTasks, labelsData, usersData] = await Promise.all([
           projectService.getProject(projectId),
           taskService.getTasksByProject(projectId, {
-            viewerUserId: session.user.id,
-            viewerRole: session.user.role,
+            viewerUserId,
+            viewerRole,
             includeTemplates: false
           }),
           labelService.getLabels(),
@@ -76,9 +83,7 @@ export default function ProjectDetailPage() {
       }
     };
 
-    if (session?.user?.id && projectId) {
-      loadProjectData();
-    }
+    loadProjectData();
   }, [session, projectId, router]);
 
   // Get task counts
