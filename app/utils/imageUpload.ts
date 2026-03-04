@@ -69,7 +69,7 @@ export const deleteImage = async (imageUrl: string): Promise<boolean> => {
   try {
     // For now, we'll just return true since deletion is not critical
     // In a production environment, you might want to implement server-side deletion
-    console.log('Image deletion not implemented:', imageUrl);
+    void imageUrl;
     return true;
   } catch (error) {
     console.error('Error deleting image:', error);

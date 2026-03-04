@@ -80,9 +80,7 @@ export const sendRegistrationNotification = async (studentData: RegistrationNoti
   };
 
   try {
-    console.log('Đang gửi email thông báo đăng ký học viên mới...');
     const response = await sgMail.send(msg);
-    console.log('Email thông báo đăng ký đã được gửi thành công');
     return response;
   } catch (error) {
     const sendGridError = error as SendGridErrorResponse;
@@ -153,13 +151,7 @@ export const sendPaymentReminder = async (overdueStudents: PaymentReminderData[]
   };
 
   try {
-    console.log('Attempting to send email with SendGrid...');
-    console.log('From:', process.env.SENDER_EMAIL);
-    console.log('To:', process.env.ADMIN_EMAIL);
-    
     const response = await sgMail.send(msg);
-    console.log('SendGrid API Response:', response[0].statusCode);
-    console.log('Payment reminder email sent successfully');
     
     return response;
   } catch (error) {
@@ -233,13 +225,7 @@ export const sendCourseEndReminder = async (students: CourseEndReminderData[]) =
   };
 
   try {
-    console.log('Attempting to send course end reminder email...');
-    console.log('From:', process.env.SENDER_EMAIL);
-    console.log('To:', process.env.ADMIN_EMAIL);
-    
     const response = await sgMail.send(msg);
-    console.log('SendGrid API Response:', response[0].statusCode);
-    console.log('Course end reminder email sent successfully');
     
     return response;
   } catch (error) {

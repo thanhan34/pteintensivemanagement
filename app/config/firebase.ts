@@ -14,15 +14,12 @@ try {
   // Check if Firebase is already initialized
   if (getApps().length > 0) {
     app = getApp();
-    console.log('Using existing Firebase app');
   } else {
     app = initializeApp(firebaseConfig);
-    console.log('Initialized new Firebase app');
   }
 
   // Initialize Firestore
   db = getFirestore(app);
-  console.log('Firestore initialized successfully');
 
   // Enable offline persistence if in browser environment
   if (typeof window !== 'undefined') {
@@ -37,11 +34,9 @@ try {
 
   // Initialize Auth
   auth = getAuth(app);
-  console.log('Firebase Auth initialized successfully');
 
   // Initialize Storage
   storage = getStorage(app);
-  console.log('Firebase Storage initialized successfully');
 
 } catch (error) {
   console.error('Error initializing Firebase:', error);
@@ -59,13 +54,5 @@ if (!app || !db || !auth || !storage) {
   console.error('Firebase services not properly initialized');
   throw new Error('Firebase services not properly initialized');
 }
-
-// Log configuration status (without sensitive data)
-console.log('Firebase initialized with:', {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
-  hasApiKey: !!firebaseConfig.apiKey,
-  hasAppId: !!firebaseConfig.appId,
-});
 
 export { app, db, auth, storage };

@@ -77,7 +77,6 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
 
   // Access control check - allow admin, administrative_assistant, and saler
   if (!session?.user?.role || (session.user.role !== 'admin' && session.user.role !== 'administrative_assistant' && session.user.role !== 'saler')) {
-    console.log('Unauthorized access attempted');
     return null;
   }
 

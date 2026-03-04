@@ -62,8 +62,7 @@ export default function AttendanceForm() {
         ...attendanceData,
         createdAt: serverTimestamp(),
       });
-
-      console.log('Attendance record created with ID:', docRef.id);
+      void docRef;
 
       // Reset form
       setDate(new Date().toISOString().split('T')[0]); // Reset to today's date

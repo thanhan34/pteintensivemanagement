@@ -3,5 +3,5 @@
 // See vercel.json for the cron configuration
 
 export const initializeCronJobs = () => {
-  console.log('Cron jobs are now managed by Vercel Cron');
+  // Cron jobs are now managed by Vercel Cron
 };

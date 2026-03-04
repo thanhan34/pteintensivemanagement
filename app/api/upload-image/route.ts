@@ -5,12 +5,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../config/auth';
 
 export async function POST(request: NextRequest) {
-  console.log('Upload API called');
-  
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    console.log('Session check:', session ? 'authenticated' : 'not authenticated');
     
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,8 +15,6 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    
-    console.log('File received:', file ? `${file.name} (${file.size} bytes)` : 'no file');
     
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });

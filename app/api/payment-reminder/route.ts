@@ -57,8 +57,6 @@ export async function GET(request: Request) {
       );
     });
 
-    console.log(`Found ${overdueStudents.length} students with overdue payments`);
-
     if (overdueStudents.length > 0) {
       try {
         // Format student data for email
@@ -70,8 +68,7 @@ export async function GET(request: Request) {
         }));
 
         // Send email notification
-        const emailResponse = await sendPaymentReminder(reminderData);
-        console.log('Email sent successfully:', emailResponse);
+        await sendPaymentReminder(reminderData);
 
         return NextResponse.json({
           success: true,

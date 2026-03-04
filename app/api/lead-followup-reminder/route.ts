@@ -14,21 +14,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🔔 Lead follow-up reminder cron job started');
-
     // Get overdue leads
     const overdueLeads = await getOverdueLeads();
     
     if (overdueLeads.length === 0) {
-      console.log('✅ No overdue leads found');
       return NextResponse.json({
         success: true,
         message: 'No overdue leads',
         count: 0
       });
     }
-
-    console.log(`📋 Found ${overdueLeads.length} overdue leads`);
 
     // Send notifications for each overdue lead
     const notifications = await Promise.allSettled(
@@ -42,8 +37,6 @@ export async function GET(request: Request) {
 
           // Send Discord notification
           await notifyOverdueFollowUp(lead, assigneeName);
-
-          console.log(`✅ Notification sent for lead: ${lead.fullName} (${lead.id})`);
           
           return {
             leadId: lead.id,
@@ -68,8 +61,6 @@ export async function GET(request: Request) {
     ).length;
 
     const failed = notifications.length - successful;
-
-    console.log(`✅ Lead follow-up reminders sent: ${successful} successful, ${failed} failed`);
 
     return NextResponse.json({
       success: true,
@@ -99,8 +90,6 @@ export async function GET(request: Request) {
 // Test endpoint - remove in production or add authentication
 export async function POST() {
   try {
-    console.log('🧪 Testing lead follow-up reminder...');
-    
     const overdueLeads = await getOverdueLeads();
     
     return NextResponse.json({
