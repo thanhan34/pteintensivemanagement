@@ -44,6 +44,58 @@ const TASK_META_COLLECTION = 'task_meta';
 const COUNTERS_DOC_ID = 'counters';
 
 type FirestoreDate = Timestamp | Date | string | number | null | undefined;
+type FirestoreRecord = Record<string, unknown>;
+
+interface TaskDocument extends FirestoreRecord {
+  code?: string;
+  title?: string;
+  description?: string;
+  createdBy?: string;
+  assigneeIds?: string[];
+  watcherIds?: string[];
+  priority?: TaskRecord['priority'];
+  status?: TaskRecord['status'];
+  dueDate?: FirestoreDate;
+  attachments?: Array<Partial<TaskAttachment> & { uploadedAt?: FirestoreDate }>;
+  createdAt?: FirestoreDate;
+  updatedAt?: FirestoreDate;
+}
+
+interface TaskCommentDocument extends FirestoreRecord {
+  taskId?: string;
+  content?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: FirestoreDate;
+  updatedAt?: FirestoreDate;
+}
+
+interface TaskActivityDocument extends FirestoreRecord {
+  taskId?: string;
+  type?: TaskActivityType;
+  actorId?: string;
+  actorName?: string;
+  message?: string;
+  meta?: Record<string, unknown>;
+  createdAt?: FirestoreDate;
+}
+
+interface TaskUserDocument extends FirestoreRecord {
+  name?: string;
+  email?: string;
+  role?: string;
+  isActive?: boolean;
+  image?: string;
+  photoURL?: string;
+  createdAt?: FirestoreDate;
+  updatedAt?: FirestoreDate;
+  lastLoginAt?: FirestoreDate;
+  lastLogin?: FirestoreDate;
+}
+
+function isDefined<T>(value: T | undefined | null): value is T {
+  return value !== undefined && value !== null;
+}
 
 function isTimestampLike(value: unknown): value is { toDate: () => Date } {
   return !!value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function';
@@ -73,7 +125,7 @@ function mapAttachment(raw: Partial<TaskAttachment> & { uploadedAt?: FirestoreDa
   };
 }
 
-function mapTask(docId: string, data: Record<string, any>): TaskRecord {
+function mapTask(docId: string, data: TaskDocument): TaskRecord {
   return {
     id: docId,
     code: data.code || '',
@@ -91,7 +143,7 @@ function mapTask(docId: string, data: Record<string, any>): TaskRecord {
   };
 }
 
-function mapComment(docId: string, data: Record<string, any>): TaskComment {
+function mapComment(docId: string, data: TaskCommentDocument): TaskComment {
   return {
     id: docId,
     taskId: data.taskId || '',
@@ -103,7 +155,7 @@ function mapComment(docId: string, data: Record<string, any>): TaskComment {
   };
 }
 
-function mapActivity(docId: string, data: Record<string, any>): TaskActivity {
+function mapActivity(docId: string, data: TaskActivityDocument): TaskActivity {
   return {
     id: docId,
     taskId: data.taskId || '',
@@ -116,7 +168,7 @@ function mapActivity(docId: string, data: Record<string, any>): TaskActivity {
   };
 }
 
-function mapUser(docId: string, data: Record<string, any>): TaskUserProfile {
+function mapUser(docId: string, data: TaskUserDocument): TaskUserProfile {
   return {
     id: docId,
     name: data.name || data.email || 'Unknown user',
@@ -366,7 +418,7 @@ export const taskSystemService = {
 
   async deleteTask(taskId: string, actor: { id: string; name?: string }) {
     const snapshot = await getDoc(doc(db, TASKS_COLLECTION, taskId));
-    const taskData = snapshot.exists() ? snapshot.data() : null;
+    const taskData: TaskDocument | null = snapshot.exists() ? (snapshot.data() as TaskDocument) : null;
 
     if (snapshot.exists()) {
       await logActivity({
@@ -374,7 +426,7 @@ export const taskSystemService = {
         actorId: actor.id,
         actorName: actor.name,
         type: 'deleted',
-        message: `deleted task ${(taskData as any).code || taskId}`,
+        message: `deleted task ${taskData?.code || taskId}`,
       });
     }
 
@@ -385,12 +437,12 @@ export const taskSystemService = {
       deleteDoc(doc(db, TASK_META_COLLECTION, taskId)).catch(() => undefined),
     ]);
 
-    if (taskData && Array.isArray((taskData as any).attachments)) {
+    if (taskData && Array.isArray(taskData.attachments)) {
       await Promise.all(
-        (taskData as any).attachments
+        taskData.attachments
           .map((attachment: { path?: string }) => attachment?.path)
-          .filter(Boolean)
-          .map((path: string) => deleteObject(ref(storage, path)).catch(() => undefined)),
+          .filter(isDefined)
+          .map((path) => deleteObject(ref(storage, path)).catch(() => undefined)),
       );
     }
 
