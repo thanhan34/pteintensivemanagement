@@ -1,127 +1,157 @@
 # Firestore Security Rules
 
-Copy and paste these updated rules into your Firebase Console under Firestore Database > Rules:
+Below is an updated ruleset for the new task management system while preserving the existing collections already used in the project.
+
+## Firestore rules
 
 ```rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is admin
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return signedIn() && userDoc(request.auth.uid).data.role == 'admin';
     }
 
-    // Allow initial user document creation during sign-in
-    match /users/{userId} {
-      allow read, write: if request.auth != null && 
-        (request.auth.uid == userId || 
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function taskDoc(taskId) {
+      return get(/databases/$(database)/documents/tasks/$(taskId));
+    }
+
+    function relatedTask(taskId) {
+      let task = taskDoc(taskId).data;
+      return signedIn() && (
         isAdmin() ||
-        // Allow initial document creation during sign-in
-        (request.method == 'create' && request.auth.uid == userId));
+        task.createdBy == request.auth.uid ||
+        request.auth.uid in task.assigneeIds ||
+        request.auth.uid in task.watcherIds
+      );
     }
 
-    // Attendance records
+    function canCreateTask() {
+      return signedIn();
+    }
+
+    function canUpdateTaskContent() {
+      return signedIn() && (
+        isAdmin() || resource.data.createdBy == request.auth.uid
+      );
+    }
+
+    function canUpdateTaskStatus() {
+      return signedIn() && (
+        isAdmin() || request.auth.uid in resource.data.assigneeIds
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (isSelf(userId) || isAdmin());
+      allow create: if signedIn() && isSelf(userId);
+      allow update: if signedIn() && (isSelf(userId) || isAdmin());
+      allow delete: if signedIn() && isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn() && (
+        isAdmin() ||
+        resource.data.createdBy == request.auth.uid ||
+        request.auth.uid in resource.data.assigneeIds ||
+        request.auth.uid in resource.data.watcherIds
+      );
+
+      allow create: if canCreateTask() &&
+        request.resource.data.createdBy == request.auth.uid;
+
+      allow update: if canUpdateTaskContent() || canUpdateTaskStatus();
+      allow delete: if signedIn() && isAdmin();
+    }
+
+    match /task_comments/{commentId} {
+      allow read: if relatedTask(resource.data.taskId);
+      allow create: if signedIn() && relatedTask(request.resource.data.taskId);
+      allow update, delete: if signedIn() && (
+        isAdmin() || resource.data.createdBy == request.auth.uid
+      );
+    }
+
+    match /task_activities/{activityId} {
+      allow read: if relatedTask(resource.data.taskId);
+      allow create: if signedIn() && relatedTask(request.resource.data.taskId);
+      allow update, delete: if signedIn() && isAdmin();
+    }
+
+    match /task_meta/{docId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && isAdmin();
+    }
+
     match /attendance/{recordId} {
-      allow read: if request.auth != null && 
-        (isAdmin() || resource.data.trainerId == request.auth.uid);
-      
-      allow create: if request.auth != null && 
-        request.resource.data.trainerId == request.auth.uid;
-      
-      allow update: if request.auth != null && 
-        (isAdmin() || 
-        (resource.data.trainerId == request.auth.uid && resource.data.status == 'pending'));
+      allow read: if signedIn() && (isAdmin() || resource.data.trainerId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.trainerId == request.auth.uid;
+      allow update: if signedIn() && (isAdmin() || (resource.data.trainerId == request.auth.uid && resource.data.status == 'pending'));
     }
 
-    // Student records - admin only access
     match /students/{studentId} {
-      allow read, write: if request.auth != null && isAdmin();
+      allow read, write: if signedIn() && isAdmin();
     }
   }
 }
 ```
 
-## Important Changes in These Rules
+## Storage rules for task attachments
 
-1. Added Helper Function:
-   - `isAdmin()` function to check admin role
-   - Reduces code duplication
-   - Makes rules more maintainable
+Apply this under Firebase Storage > Rules:
 
-2. User Document Access:
-   - Users can read/write their own documents
-   - Admins can access all user documents
-   - Special provision for initial document creation
+```rules
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-3. Attendance Records:
-   - Trainers can read their own records and create new ones
-   - Trainers can update pending records
-   - Admins have full access
+    function userDoc(uid) {
+      return firestore.get(/databases/(default)/documents/users/$(uid));
+    }
 
-4. Student Records (New):
-   - Only admins can read and write student records
-   - Complete access control for student data
-   - Prevents unauthorized access
+    function isAdmin() {
+      return signedIn() && userDoc(request.auth.uid).data.role == 'admin';
+    }
 
-## Setup Instructions
-
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Select your project
-3. Click "Firestore Database" in the left sidebar
-4. Click the "Rules" tab
-5. Replace ALL existing rules with the ones above
-6. Click "Publish"
-
-## Testing the Rules
-
-You can test these rules in the Firebase Console Rules Playground:
-
-### Test Case 1: Admin Accessing Student Records
-```javascript
-{
-  "request": {
-    "auth": {
-      "uid": "admin123"
-    },
-    "method": "get",
-    "path": "/databases/(default)/documents/students/student123"
+    match /task-attachments/{taskId}/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+      allow delete: if signedIn() && isAdmin();
+    }
   }
 }
 ```
 
-### Test Case 2: Non-Admin Attempting Student Access
-```javascript
-{
-  "request": {
-    "auth": {
-      "uid": "trainer123"
-    },
-    "method": "get",
-    "path": "/databases/(default)/documents/students/student123"
-  }
-}
-```
+## Notes
 
-## Troubleshooting
+- Admin can view and manage all tasks and users.
+- Normal users can only read tasks related to them: creator, assignee, or watcher.
+- Normal users can create tasks.
+- Creator can edit task content.
+- Assignee can update status.
+- All comments and activities are restricted to related users only.
 
-If you encounter access issues:
+## Recommended indexes
 
-1. Check User Role:
-   - Verify user document exists in Firestore
-   - Confirm role is set to 'admin' for admin users
+Create these composite indexes if Firebase prompts for them:
 
-2. Test Authentication:
-   - Ensure user is properly signed in
-   - Check auth token in Firebase Console
-
-3. Verify Rules:
-   - Rules are properly published
-   - No syntax errors in rules
-   - Correct collection paths
-
-4. Monitor Logs:
-   - Check Firebase Console logs
-   - Look for permission denied errors
-   - Review rule evaluation logs
-
-Remember to monitor the Firebase Console logs for any security rule violations or access denied errors.
+- `tasks`: `createdBy ASC, updatedAt DESC`
+- `tasks`: `assigneeIds ARRAY, updatedAt DESC`
+- `tasks`: `watcherIds ARRAY, updatedAt DESC`
+- `task_comments`: `taskId ASC, createdAt ASC`
+- `task_activities`: `taskId ASC, createdAt DESC`

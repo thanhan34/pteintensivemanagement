@@ -28,9 +28,16 @@ export default withAuth(
       return NextResponse.next();
     }
 
-    // Allow all authenticated roles to access Tasks page
+    // Allow all authenticated roles to access task system pages
     if (path.startsWith('/tasks')) {
       return NextResponse.next();
+    }
+
+    if (path.startsWith('/admin/tasks') || path.startsWith('/admin/users')) {
+      if ((token.role as UserRole) === 'admin') {
+        return NextResponse.next();
+      }
+      return NextResponse.redirect(new URL('/tasks', req.url));
     }
 
     const role = token.role as UserRole;
