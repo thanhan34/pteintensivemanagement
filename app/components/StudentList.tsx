@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { Fragment, useState, useMemo } from 'react';
 import { Student } from '../types/student';
 import { useSession } from 'next-auth/react';
 import * as XLSX from 'xlsx';
@@ -30,7 +30,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
   const canViewPhone = isFullAdmin || isSaler; // Admin and Saler can see phone numbers
   const canEdit = isFullAdmin || isAdministrativeAssistant || isSaler; // Admin, Assistant, and Saler can edit
   const canDelete = isFullAdmin; // Only full admins can delete
-  const columnCount = canViewFees ? 8 : 7;
+  const columnCount = canViewFees ? 9 : 8;
   
   const toggleExpanded = (studentId: string) => {
     setExpandedStudents(prev => ({
@@ -46,8 +46,11 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
     return [...students]
       .filter(student => {
         // Text search filter
-        const textMatch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.trainerName.toLowerCase().includes(searchTerm.toLowerCase());
+        const normalizedSearchTerm = searchTerm.toLowerCase();
+        const textMatch = student.name.toLowerCase().includes(normalizedSearchTerm) ||
+                         student.trainerName.toLowerCase().includes(normalizedSearchTerm) ||
+                         (student.cccd || '').toLowerCase().includes(normalizedSearchTerm) ||
+                         (student.studentId || '').toLowerCase().includes(normalizedSearchTerm);
         
         // Date range filter
         let dateMatch = true;
@@ -118,6 +121,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
       
       const baseData: Record<string, string | number> = {
         'Student ID': student.studentId || '-',
+        'CCCD': student.cccd || '-',
         'Name': student.name,
         'Phone': canViewPhone ? student.phone : '***-***-****',
         'Province': student.province,
@@ -212,7 +216,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
               </div>
               <input
                 type="text"
-                placeholder="Search by name or trainer..."
+                placeholder="Search by name, trainer, student ID or CCCD..."
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#fc5d01] focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -296,60 +300,75 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full table-fixed divide-y divide-gray-200">
+              <colgroup>
+                <col className="w-28" />
+                <col className="w-36" />
+                <col className="w-56" />
+                <col className="w-28" />
+                <col className="w-36" />
+                <col className="w-32" />
+                <col className="w-32" />
+                {canViewFees && <col className="w-36" />}
+                <col className="w-28" />
+              </colgroup>
               <thead className="bg-[#fedac2]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Student ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Start Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Student ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">CCCD</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Student</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Start Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Status</th>
                   {canViewFees && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Fee</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Fee</th>
                   )}
-                  <th className="px-6 py-3 text-right text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Actions</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-[#fc5d01] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAndSortedStudents.map((student) => (
-                  <tbody key={student.id} className="divide-y divide-gray-200">
+                  <Fragment key={student.id}>
                     <tr className="hover:bg-[#fff5ef] transition-colors duration-200">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{student.studentId || '-'}</div>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="truncate text-sm text-gray-900" title={student.studentId || '-'}>{student.studentId || '-'}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="truncate text-sm text-gray-900" title={student.cccd || '-'}>{student.cccd || '-'}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                            <div className="text-sm text-gray-500">{student.trainerName}</div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-gray-900" title={student.name}>{student.name}</div>
+                            <div className="truncate text-sm text-gray-500" title={student.trainerName}>{student.trainerName}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getTypeColor(student.type)}`}>
                           {getTypeLabel(student.type)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="truncate text-sm text-gray-900" title={canViewPhone ? student.phone : '***-***-****'}>
                           {canViewPhone ? student.phone : '***-***-****'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(student.startDate)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(student.tuitionPaymentStatus)}`}>
                           {student.tuitionPaymentStatus.charAt(0).toUpperCase() + student.tuitionPaymentStatus.slice(1)}
                         </span>
                       </td>
                       {canViewFees && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#fc5d01]">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-[#fc5d01]">
                           {formatCurrency(student.tuitionFee)}
                         </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => toggleExpanded(student.id)}
@@ -393,6 +412,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
                               <h5 className="font-medium text-[#fc5d01] mb-2">Personal Information</h5>
                               <div className="space-y-2 text-sm">
                                 <div><span className="text-gray-500">DOB:</span> {student.dob ? formatDate(student.dob) : '-'}</div>
+                                <div><span className="text-gray-500">CCCD:</span> {student.cccd || '-'}</div>
                                 <div><span className="text-gray-500">Referrer:</span> {student.referrer || '-'}</div>
                                 <div><span className="text-gray-500">Residential Address:</span> {student.residentialAddress || '-'}</div>
                                 <div><span className="text-gray-500">Province:</span> {student.province}</div>
@@ -434,7 +454,7 @@ export default function StudentList({ students, onEdit, onDelete, defaultDateRan
                         </td>
                       </tr>
                     )}
-                  </tbody>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

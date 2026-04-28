@@ -16,6 +16,7 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
   const isAdmin = session?.user?.role === 'admin';
   const [formData, setFormData] = useState<StudentFormData>({
     studentId: '',
+    cccd: '',
     name: '',
     phone: '',
     dob: new Date().toISOString().split('T')[0],
@@ -40,6 +41,7 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
     if (initialData) {
       setFormData({
         studentId: initialData.studentId || '',
+        cccd: initialData.cccd || '',
         name: initialData.name,
         phone: initialData.phone || '',
         dob: initialData.dob || new Date().toISOString().split('T')[0],
@@ -77,6 +79,7 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
         // Only reset form if this is a new student (not editing)
         setFormData({
           studentId: '',
+          cccd: '',
           name: '',
           phone: '',
           dob: new Date().toISOString().split('T')[0],
@@ -135,6 +138,18 @@ export default function StudentForm({ onSubmit, initialData }: StudentFormProps)
           onChange={(e) => setFormData({...formData, studentId: e.target.value})}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
           placeholder="Optional - can be updated later"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">CCCD</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={formData.cccd || ''}
+          onChange={(e) => setFormData({...formData, cccd: e.target.value})}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#fc5d01] focus:ring-[#fc5d01]"
+          placeholder="Nhập số CCCD"
         />
       </div>
 

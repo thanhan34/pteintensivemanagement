@@ -1,6 +1,7 @@
 export interface Student {
   id: string;
   studentId?: string; // Student ID - optional, can be updated manually later
+  cccd?: string; // Citizen ID / CCCD
   name: string;
   phone: string;
   dob: string; // date of birth
